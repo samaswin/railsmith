@@ -5,7 +5,27 @@ RSpec.describe Railsmith do
     expect(Railsmith::VERSION).not_to be nil
   end
 
-  it "does something useful" do
-    expect(false).to eq(true)
+  describe ".configuration" do
+    it "provides baseline config defaults" do
+      config = described_class.configuration
+
+      expect(config.warn_on_cross_domain_calls).to be(true)
+      expect(config.strict_mode).to be(false)
+      expect(config.serializer_adapter).to eq(:auto)
+    end
+  end
+
+  describe ".configure" do
+    after do
+      described_class.configuration = Railsmith::Configuration.new
+    end
+
+    it "yields mutable configuration" do
+      described_class.configure do |config|
+        config.strict_mode = true
+      end
+
+      expect(described_class.configuration.strict_mode).to be(true)
+    end
   end
 end
