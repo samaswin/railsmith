@@ -2,7 +2,7 @@
 
 This file breaks the roadmap into small implementation and testing phases so each phase can be completed and verified independently.
 
-## Phase 0 - Repo and Gem Bootstrap
+## Phase 0 - Repo and Gem Bootstrap -Completed
 
 ### Implement
 - Create gem skeleton (`lib`, `spec`, gemspec, version file).
@@ -22,7 +22,7 @@ This file breaks the roadmap into small implementation and testing phases so eac
 
 ---
 
-## Phase 1 - Result and Error Contract
+## Phase 1 - Result and Error Contract - Completed
 
 ### Implement
 - Add `Result.success` and `Result.failure` constructors.
@@ -42,11 +42,10 @@ This file breaks the roadmap into small implementation and testing phases so eac
 
 ---
 
-## Phase 2 - BaseService Core Lifecycle
+## Phase 2 - BaseService Core Lifecycle - Completed
 
 ### Implement
 - Add `BaseService.call(action:, params:, context:)` entrypoint.
-- Add lifecycle hooks (`before_validate`, `before_persist`, `after_commit`) with safe defaults.
 - Add shared context and parameter normalization helpers.
 - Add extension points for subclass overrides.
 
@@ -62,7 +61,7 @@ This file breaks the roadmap into small implementation and testing phases so eac
 
 ---
 
-## Phase 3 - CRUD Defaults (Create/Update/Destroy)
+## Phase 3 - CRUD Defaults (Create/Update/Destroy) - Completed
 
 ### Implement
 - Add default `create`, `update`, and `destroy` implementations in `BaseService`.
@@ -79,26 +78,6 @@ This file breaks the roadmap into small implementation and testing phases so eac
 ### Exit Criteria
 - Core write actions are usable with minimal subclassing.
 - CRUD failure behavior is consistent across actions.
-
----
-
-## Phase 4 - Read Path and Serializer Integration
-
-### Implement
-- Add default `show` and `index` actions.
-- Add serializer adapter interface and default resolver.
-- Support plain serializer fallback when adapter gem is absent.
-- Define consistent read-result payload format.
-
-### Test
-- Integration tests for `show` and `index` payload shape.
-- Adapter tests for supported serializer integrations.
-- Fallback serializer tests when no adapter is configured.
-- Performance sanity test for paginated `index` flow.
-
-### Exit Criteria
-- Read actions produce stable serialized output.
-- Serializer path works with and without external serializer gems.
 
 ---
 
@@ -206,7 +185,7 @@ This file breaks the roadmap into small implementation and testing phases so eac
 
 ### Implement
 - Write quickstart (install, generate, first call).
-- Write cookbook recipes (CRUD, bulk, domain routing, serializer setup, error mapping).
+- Write cookbook recipes (CRUD, bulk, domain routing, error mapping).
 - Add legacy adoption guide (incremental migration strategy).
 - Publish end-to-end sample flow in a dummy app.
 

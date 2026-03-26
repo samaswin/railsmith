@@ -22,6 +22,36 @@ gem install railsmith
 require "railsmith"
 ```
 
+## Result and Error Contract
+
+Railsmith uses a small, stable `Result` object that is easy to serialize and test.
+
+### Success
+
+```ruby
+result = Railsmith::Result.success(value: { id: 123 }, meta: { request_id: "abc" })
+
+result.success? # => true
+result.value    # => { id: 123 }
+result.meta     # => { request_id: "abc" }
+result.to_h
+# => { success: true, value: { id: 123 }, meta: { request_id: "abc" } }
+```
+
+### Failure
+
+```ruby
+error = Railsmith::Errors.not_found(message: "User not found", details: { model: "User", id: 1 })
+result = Railsmith::Result.failure(error:, meta: { request_id: "abc" })
+
+result.failure? # => true
+result.code     # => "not_found"
+result.error.to_h
+# => { code: "not_found", message: "User not found", details: { model: "User", id: 1 } }
+result.to_h
+# => { success: false, error: { ... }, meta: { request_id: "abc" } }
+```
+
 ## Development
 
 After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
