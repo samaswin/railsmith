@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-<% operations_modules.each do |mod| -%>
+<% enclosing_modules.each do |mod| -%>
 module <%= mod %>
 <% end -%>
   class <%= service_class_name.split("::").last %> < Railsmith::BaseService
@@ -22,7 +22,7 @@ module <%= mod %>
     end
 <% end -%>
   end
-<% (operations_modules.length - 1).downto(0) do -%>
+<% (enclosing_modules.length - 1).downto(0) do -%>
 end
 <% end -%>
 

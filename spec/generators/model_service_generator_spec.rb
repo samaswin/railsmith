@@ -26,6 +26,17 @@ RSpec.describe Railsmith::Generators::ModelServiceGenerator do
     end
   end
 
+  it "generates a service in domain mode under app/domains" do
+    Dir.mktmpdir("railsmith-model-generator-spec") do |temp_dir|
+      run_generator(["Billing::Invoice", "--domain=Billing"], temp_dir)
+
+      expect(File).to exist(File.join(temp_dir, "app/domains/billing/services/invoice_service.rb"))
+      content = File.read(File.join(temp_dir, "app/domains/billing/services/invoice_service.rb"))
+      expect(content).to include("module Billing")
+      expect(content).to include("module Services")
+    end
+  end
+
   it "is idempotent when run twice" do
     Dir.mktmpdir("railsmith-model-generator-spec") do |temp_dir|
       run_generator(["User"], temp_dir)
@@ -38,11 +49,34 @@ RSpec.describe Railsmith::Generators::ModelServiceGenerator do
     end
   end
 
+  it "does not overwrite without --force" do
+    Dir.mktmpdir("railsmith-model-generator-spec") do |temp_dir|
+      run_generator(["User"], temp_dir)
+      file = File.join(temp_dir, "app/services/operations/user_service.rb")
+      File.write(file, "CUSTOM\n")
+
+      run_generator(["User"], temp_dir)
+
+      expect(File.read(file)).to eq("CUSTOM\n")
+    end
+  end
+
   it "supports a custom output path" do
     Dir.mktmpdir("railsmith-model-generator-spec") do |temp_dir|
       run_generator(["User", "--output-path=app/services/custom_ops"], temp_dir)
 
       expect(File).to exist(File.join(temp_dir, "app/services/custom_ops/user_service.rb"))
+    end
+  end
+
+  it "supports optional action stubs" do
+    Dir.mktmpdir("railsmith-model-generator-spec") do |temp_dir|
+      run_generator(["User", "--actions=create", "update"], temp_dir)
+
+      content = File.read(File.join(temp_dir, "app/services/operations/user_service.rb"))
+      expect(content).to include("def create")
+      expect(content).to include("def update")
+      expect(content).not_to include("def destroy")
     end
   end
 

@@ -81,7 +81,7 @@ This file breaks the roadmap into small implementation and testing phases so eac
 
 ---
 
-## Phase 4 - Domain + Operation Generators
+## Phase 4 - Domain + Operation Generators - Completed
 
 ### Implement
 - Add a generator to scaffold a domain module skeleton (folder layout + namespace).
@@ -113,6 +113,9 @@ This file breaks the roadmap into small implementation and testing phases so eac
 - Tests for idempotent rerun behavior.
 - Tests for custom output paths and naming rules.
 - Dummy app test proving generated class is callable.
+- Tests for optional action stubs.
+- Tests for domain-module-aware output under `app/domains/<domain>/services`.
+- Tests to confirm existing files are not overwritten without `--force`.
 
 ### Exit Criteria
 - Every model can be scaffolded into a service quickly.
