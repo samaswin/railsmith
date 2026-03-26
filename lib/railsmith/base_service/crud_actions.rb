@@ -55,7 +55,7 @@ module Railsmith
       def write_succeeded?(record, method_name:)
         return record.destroyed? || record.errors.empty? if method_name == :destroy
 
-        record.persisted? || record.errors.empty?
+        record.errors.empty?
       end
     end
   end

@@ -6,6 +6,10 @@ module Railsmith
     require_relative "base_service/dup_helpers"
     require_relative "base_service/validation"
     require_relative "base_service/crud_actions"
+    require_relative "base_service/bulk_params"
+    require_relative "base_service/bulk_execution"
+    require_relative "base_service/bulk_contract"
+    require_relative "base_service/bulk_actions"
     require_relative "base_service/crud_model_resolution"
     require_relative "base_service/crud_record_helpers"
     require_relative "base_service/crud_error_mapping"
@@ -13,6 +17,7 @@ module Railsmith
     include DupHelpers
     include Validation
     include CrudActions
+    include BulkActions
 
     include CrudModelResolution
     include CrudRecordHelpers
