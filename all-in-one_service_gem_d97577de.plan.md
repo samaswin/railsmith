@@ -1,6 +1,6 @@
 ---
 name: All-in-One Service Gem
-overview: Design an all-in-one Rails gem that standardizes service-layer architecture with domain-based routing, CRUD/bulk base services, and dry-rb-style result/error handling, while staying flexible-by-default in v1.
+overview: Design an all-in-one Rails gem that standardizes domain-oriented service architecture (Trailblazer-like “operations”, but lighter), CRUD/bulk base services, and dry-rb-style result/error handling, while staying flexible-by-default in v1.
 todos:
   - id: choose-gem-name
     content: Finalize one gem name from the proposed options and reserve namespace.
@@ -10,9 +10,6 @@ todos:
     status: pending
   - id: implement-base-services
     content: Build BaseService with default CRUD and bulk implementations plus hooks.
-    status: pending
-  - id: implement-domain-router
-    content: Create domain router abstraction and operation mapping DSL.
     status: pending
   - id: add-generators
     content: Add install/model/domain generators with service scaffolds.
@@ -32,6 +29,8 @@ isProject: false
 
 Create a Rails gem that makes service-oriented architecture the easiest path, with optional enforcement. v1 will prioritize developer adoption: strong defaults, generators, lint-style checks, and optional strict mode later.
 
+Railsmith should feel like a pragmatic replacement for Trailblazer-style domain “concepts/operations” in apps that want the benefits (clear business-logic boundaries, composable workflows) without adopting a large framework surface area. Keep configuration and maintenance low: plain Ruby classes, explicit context, and Rails-friendly conventions.
+
 ## Proposed Gem Name Options
 
 - `railsmith` (service-centric Rails conventions)
@@ -45,7 +44,7 @@ Create a Rails gem that makes service-oriented architecture the easiest path, wi
 - `railsmith` (recommended): short, strong, and architecture-oriented.
 - `servora`: memorable and service-first identity.
 - `opsforge`: operation-pipeline + composition vibe.
-- `domroute`: clear domain-routing signal.
+- `domroute`: clear domain boundary signal.
 - `boundrail`: strong boundary-focused branding.
 - `layerlane`: clean service-layer convention message.
 
@@ -55,13 +54,103 @@ Create a Rails gem that makes service-oriented architecture the easiest path, wi
 - RubyGems package: `railsmith`
 - Ruby module namespace: `Railsmith`
 
-## v1 Scope (Flexible + Full Domain Router Layer)
+## v1 Scope (Flexible + Domain Boundaries)
 
-- Domain router abstraction layer to define domain-first routes and map to domain operations.
+- Domain-oriented conventions and context propagation to support bounded contexts without requiring a central resolver.
 - Base service framework with default CRUD and bulk actions (`create`, `update`, `destroy`, `bulk_create`, `bulk_update`, `bulk_destroy`).
 - Service registry + generators so each model gets a service class scaffold (can be empty and inherit defaults).
 - Unified result contract inspired by dry-rb (`Success`/`Failure`, typed error payloads, codes, metadata).
 - Non-blocking architecture checks (warnings in CI/dev) for direct model usage and cross-domain leaks.
+
+## App-Level Domain Context (Host App Integration Plan)
+
+We need to support “domain level” behavior in the *actual Rails application*: a request arrives at `host` (and/or `subdomain`, `path`, headers), the app determines the **current domain**, and that domain context is propagated into service/operation execution consistently.
+
+### Goals
+
+- Requests map deterministically to a **domain key** (example: `:billing`, `:identity`, `:catalog`).
+- The **domain key is propagated** into service/operation execution as `context[:current_domain]` (plus request metadata).
+- The host app can choose its strategy (host-based, subdomain-based, path-based, header-based) without rewriting operations.
+- Works with normal Rails routing; Railsmith does not replace Rails routing.
+
+### Recommended Integration Shape (Default)
+
+- **Domain identification** happens early per request (controller concern or middleware).
+- Domain-specific controller/actions (or a thin “endpoint operation” layer) call the appropriate domain operation/service directly, so controllers remain simple without requiring an extra resolver.
+
+Concrete pieces:
+
+- **`Railsmith::Domain::Detector` (host app responsibility in v1)**:
+  - A small callable configured by the app, returning a domain key and metadata.
+  - Inputs: `request` (host, subdomain, path, headers), `current_user` (optional).
+  - Output example:
+    - `domain: :billing`
+    - `meta: { host: request.host, request_id: request.request_id }`
+
+- **`Railsmith::DomainContext` (gem responsibility)**:
+  - A simple, explicit data container for `current_domain` + request metadata.
+  - Passed into services/operations as `context`.
+  - Must not rely on globals by default; allow optional integration with `ActiveSupport::CurrentAttributes` later.
+
+### Host App Wiring Options (Supported Patterns)
+
+We should explicitly support these common approaches; the gem should provide helpers but remain flexible:
+
+- **Host/subdomain-based** (most common):
+  - `billing.example.com` → `:billing`
+  - `api.example.com` + `/billing/...` → `:billing` (hybrid)
+- **Path-based**:
+  - `/billing/...` → `:billing`
+- **Header-based** (multi-tenant gateways / internal APIs):
+  - `X-Domain: billing` → `:billing`
+- **Tenant + domain (two-dimensional)**:
+  - Domain is still a **bounded-context key**; tenancy is separate metadata:
+  - `context[:tenant_id]`, `context[:account_id]`, etc.
+
+### Rails Touchpoints (Where This Lives in the App)
+
+- **`ApplicationController` concern** (recommended first):
+  - `before_action :set_domain_context`
+  - Build `context = Railsmith::DomainContext.new(current_domain:, meta: ...)`
+  - Store in an instance variable: `@railsmith_context`
+  - Pass to calls explicitly: `SomeOperation.call(params:, context: @railsmith_context.to_h)`
+
+- **Middleware** (optional):
+  - For apps that need domain context outside controllers (jobs triggered by request, logging tags).
+  - v1 can keep this as “bring your own”; document how to do it.
+
+- **Rails routes constraints** (optional, *only* for request dispatching):
+  - Use Rails constraints to route traffic to different controllers or namespaces.
+  - Railsmith should not require constraints, but docs should show examples because this is what people mean by “domain-level routing”.
+
+### Proposed DSL Additions (to Make This Easy)
+
+Avoid a required router/resolver DSL in v1. Instead:
+
+- Provide a small `DomainContext` object and helper(s) to build it from request metadata.
+- Provide conventions + generators so teams can organize code by bounded context:
+  - `app/domains/billing/...`
+  - `Billing::Invoices::Create`
+  - `Billing::InvoiceService`
+
+### Minimal Example (Doc-Level Target)
+
+- Request comes in on `billing.example.com`.
+- App `Domain::Detector` returns `:billing`.
+- Controller calls the domain operation/service directly:
+  - `Billing::Invoices::Create.call(params:, context: @railsmith_context.to_h)`
+- The operation/service receives:
+  - `params` (request params)
+  - `context` (`current_domain`, `request_id`, `actor`, `tenant_id`)
+
+### Testing Plan (So This Doesn’t Drift)
+
+- **Unit tests** (gem):
+  - `DomainContext` behaviors and serialization
+  - Context is passed through unchanged (services/operations do not mutate caller data)
+- **Integration tests** (dummy Rails app in spec):
+  - A controller endpoint sets `current_domain` using a host/subdomain detector and calls a domain operation/service directly.
+  - Ensure a request to `billing.example.com` builds `current_domain: :billing` and the called operation sees it in `context`.
 
 ## Version Plan (All Versions)
 
@@ -82,11 +171,11 @@ Create a Rails gem that makes service-oriented architecture the easiest path, wi
 - Partial success/failure contract (batch summary + item-level errors).
 - Transaction strategy options (`all_or_nothing`, `best_effort`).
 
-### v0.4.0 (Domain Router Layer)
+### v0.4.0 (Domain Context + Conventions)
 
-- Domain-based routing DSL and operation mapping.
 - Domain context propagation (`current_domain`, request metadata).
-- Cross-domain call tracing with allowlist support.
+- Domain-oriented folder/module conventions + generators.
+- Cross-domain call tracing/guardrails based on propagated context (warn-only).
 
 ### v0.5.0 (Architecture Warnings)
 
@@ -122,7 +211,7 @@ Create a Rails gem that makes service-oriented architecture the easiest path, wi
 
 ### v3.0.0 (Enterprise Domain Platform)
 
-- Advanced domain router plugins (versioned domains, tenancy-aware routing).
+- Advanced domain boundary plugins (domain versioning, tenancy-aware context helpers).
 - Architecture drift analytics and trend reports.
 - Policy packs and rule marketplace for organization-wide conventions.
 
@@ -130,8 +219,7 @@ Create a Rails gem that makes service-oriented architecture the easiest path, wi
 
 ```mermaid
 flowchart LR
-  Client[ClientController] --> DomainRouter
-  DomainRouter --> DomainOperation
+  Client[ClientController] --> DomainOperation
   DomainOperation --> BaseService
   BaseService --> RepoModel
   BaseService --> ResultObject
@@ -147,19 +235,17 @@ flowchart LR
   - `Result`: `success?`, `failure?`, `value`, `error`, `code`, `meta`.
   - `Errors`: normalized error builder (`validation_error`, `conflict`, `not_found`, `unauthorized`, `unexpected`).
 - `Domain`:
-  - `DomainRouter`: DSL for domain route groups and operation mapping.
   - `DomainContext`: current domain metadata for checks/logging.
 - `Generators`:
   - install generator (initializer, folder layout, sample domain)
   - model-service generator (empty subclass of BaseService + operation stubs)
-  - domain generator (routes + operations skeleton)
+  - domain generator (module + operation/service skeleton)
 - `Checks` (non-blocking in v1):
   - warn when controller references model directly.
   - warn when operation crosses domain boundary without explicit allowlist.
 
 ## Public DSL (v1 shape)
 
-- `DomainRouter.draw` for domain-based route declarations.
 - `BaseService.call(action:, params:, context:)` default entrypoint.
 - Optional operation classes for step-based workflows (Trailblazer-inspired), but lightweight.
 - `Result.success(value:, meta:)` and `Result.failure(code:, message:, details:)`.
@@ -168,7 +254,7 @@ flowchart LR
 
 - Phase 1: skeleton gem, config, result objects, base CRUD.
 - Phase 2: bulk actions + generators.
-- Phase 3: domain router abstraction + operation mapping.
+- Phase 3: domain context propagation + domain conventions (no resolver required).
 - Phase 4: architecture checks + CI formatter + docs examples.
 - Phase 5: strict mode preview (off by default), migration guide.
 
@@ -202,9 +288,9 @@ flowchart LR
 
 ### Sprint 4 (Weeks 7-8) -> `v0.4.0`
 
-- Build domain router DSL and operation mapping.
-- Add domain context propagation and route-domain checks.
-- Publish full domain CRUD walkthrough docs.
+- Add domain context propagation (`current_domain`, request metadata).
+- Add domain conventions + generators (domain module skeletons, operation/service scaffolds).
+- Publish full domain CRUD walkthrough docs (without a resolver dependency).
 
 ### Sprint 5 (Weeks 9-10) -> `v0.5.0`
 
@@ -232,11 +318,11 @@ flowchart LR
 
 ## Documentation Strategy
 
-- Quick start in 5 minutes (install + generate + first domain route + first operation).
+- Quick start in 5 minutes (install + generate + first domain context + first operation).
 - Cookbook:
   - simple CRUD service
   - bulk import with partial failure handling
-  - domain route setup
+  - domain context setup
   - custom error mapping
 - Adoption guide for legacy apps:
   - start in warning mode

@@ -81,11 +81,30 @@ This file breaks the roadmap into small implementation and testing phases so eac
 
 ---
 
+## Phase 4 - Domain + Operation Generators
+
+### Implement
+- Add a generator to scaffold a domain module skeleton (folder layout + namespace).
+- Add an operation generator for domain-oriented operations (plain Ruby class with a single `call` entrypoint returning `Railsmith::Result`).
+- Ensure generators encourage a consistent convention (domain module, operation naming, and where services live).
+- Ensure generated operations/services accept `context:` and propagate `context[:current_domain]` into any nested calls.
+
+### Test
+- Generator tests for a simple domain name and a namespaced domain name.
+- Tests for idempotent rerun behavior and overwrite protection.
+- Dummy app smoke test: generated operation loads and returns a `Result`.
+
+### Exit Criteria
+- Teams can create a new domain feature with one generator command and minimal manual wiring.
+- Generated structure matches conventions and remains easy to maintain.
+
+---
+
 ## Phase 5 - Model Service Generator
 
 ### Implement
 - Add generator to scaffold per-model service classes.
-- Generate empty subclass with operation stubs (optional flags).
+- Generate empty subclass with optional operation stubs (optional flags).
 - Add namespace-aware generation for domain modules.
 - Add overwrite protection and regeneration guidance messages.
 
@@ -101,7 +120,7 @@ This file breaks the roadmap into small implementation and testing phases so eac
 
 ---
 
-## Phase 6 - Bulk Operations
+## Phase 6 - Bulk Operations - Completed
 
 ### Implement
 - Add `bulk_create`, `bulk_update`, and `bulk_destroy`.
@@ -121,30 +140,25 @@ This file breaks the roadmap into small implementation and testing phases so eac
 
 ---
 
-## Phase 7 - Domain Router DSL (Core)
+## Phase 7 - Domain Context (Core)
 
 ### Implement
-- Add `DomainRouter.draw` DSL and operation mapping primitives.
-- Add operation registry and route resolution logic.
 - Add domain context propagation (`current_domain`, metadata).
-- Add basic instrumentation hooks for router traces.
+- Add basic instrumentation hooks for domain tags.
 
 ### Test
-- DSL parser tests for valid/invalid definitions.
-- Router resolution tests across multiple domains.
-- Tests for context propagation into service execution.
-- Tests for missing-route and duplicate-route errors.
+- Tests for context propagation into service/operation execution.
+- Tests for missing/blank domain behavior (allowed in flexible mode).
 
 ### Exit Criteria
-- Domain routes are declarative and deterministic.
-- Operations resolve correctly with propagated context.
+- Domain context propagation is deterministic and explicit.
 
 ---
 
 ## Phase 8 - Cross-Domain Guardrails (Warn-Only)
 
 ### Implement
-- Add detection for cross-domain operation calls.
+- Add detection for cross-domain calls using `context[:current_domain]` tagging.
 - Add allowlist configuration for approved crossings.
 - Emit warning events (non-blocking) with structured metadata.
 - Add hooks for future strict-mode upgrade path.
@@ -185,7 +199,7 @@ This file breaks the roadmap into small implementation and testing phases so eac
 
 ### Implement
 - Write quickstart (install, generate, first call).
-- Write cookbook recipes (CRUD, bulk, domain routing, error mapping).
+- Write cookbook recipes (CRUD, bulk, domain context/boundaries, error mapping).
 - Add legacy adoption guide (incremental migration strategy).
 - Publish end-to-end sample flow in a dummy app.
 
@@ -225,7 +239,7 @@ This file breaks the roadmap into small implementation and testing phases so eac
 
 ### Phase 12 - DX Expansion (v1.1.x)
 - Implement advanced generators and response helpers.
-- Add performance optimizations for checks/router.
+- Add performance optimizations for checks and domain context propagation.
 - Test generator UX and benchmark critical paths.
 
 ### Phase 13 - Strict Mode Preview (v1.2.x)
