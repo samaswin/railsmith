@@ -66,12 +66,28 @@ RSpec.describe Railsmith::Generators::OperationGenerator do
 
       result = Billing::Operations::Invoices::Create.call(
         params: { invoice_id: 1 },
-        context: { current_domain: :billing }
+        context: { current_domain: "billing" }
       )
 
       expect(result).to be_a(Railsmith::Result)
       expect(result).to be_success
       expect(result.value).to eq({ current_domain: :billing })
+    ensure
+      Object.send(:remove_const, :Billing) if Object.const_defined?(:Billing)
+    end
+  end
+
+  it "does not mutate the caller context hash" do
+    Dir.mktmpdir("railsmith-operation-generator-spec") do |temp_dir|
+      run_generator(["Billing::Invoices::Create"], temp_dir)
+
+      load File.join(temp_dir, "app/domains/billing/operations/invoices/create.rb")
+
+      ctx = { current_domain: :billing, note: "keep" }
+      Billing::Operations::Invoices::Create.call(params: {}, context: ctx)
+
+      expect(ctx[:current_domain]).to eq(:billing)
+      expect(ctx[:note]).to eq("keep")
     ensure
       Object.send(:remove_const, :Billing) if Object.const_defined?(:Billing)
     end

@@ -11,12 +11,12 @@ module <%= mod %>
     attr_reader :params, :context
 
     def initialize(params:, context:)
-      @params = params || {}
-      @context = context || {}
+      @params = Railsmith.deep_dup(params || {})
+      @context = Railsmith.deep_dup(context || {})
     end
 
     def call
-      current_domain = context[:current_domain]
+      current_domain = Railsmith::DomainContext.normalize_current_domain(context[:current_domain])
 
       Railsmith::Result.success(value: { current_domain: current_domain })
     end

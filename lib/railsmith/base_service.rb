@@ -14,10 +14,12 @@ module Railsmith
     require_relative "base_service/crud_record_helpers"
     require_relative "base_service/crud_error_mapping"
     require_relative "base_service/crud_transactions"
+    require_relative "base_service/domain_context_propagation"
     include DupHelpers
     include Validation
     include CrudActions
     include BulkActions
+    prepend DomainContextPropagation
 
     include CrudModelResolution
     include CrudRecordHelpers
