@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+# Railsmith — lightweight service/operation framework for Rails.
 module Railsmith
   module_function
 

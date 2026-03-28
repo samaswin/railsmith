@@ -82,7 +82,7 @@ RSpec.describe "Railsmith::BaseService domain context propagation" do
   describe "instrumentation hooks" do
     it "emits a service.call.railsmith event with domain tag" do
       events = []
-      Railsmith::Instrumentation.subscribe("service.call") do |event, payload|
+      Railsmith::Instrumentation.subscribe("service.call") do |_event, payload|
         events << payload
       end
 
@@ -133,7 +133,7 @@ RSpec.describe "Railsmith::BaseService domain context propagation" do
     end
 
     it "does not suppress the action result when instrumentation is active" do
-      Railsmith::Instrumentation.subscribe { |_e, _p| }
+      Railsmith::Instrumentation.subscribe { |_e, _p| nil }
 
       service_class = Class.new(Railsmith::BaseService) do
         def create

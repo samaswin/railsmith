@@ -30,7 +30,7 @@ module Railsmith
         if meta.empty?
           {}
         else
-          meta.reject { |key, _| key == :current_domain || key == "current_domain" }
+          meta.reject { |key, _| [:current_domain, "current_domain"].include?(key) }
         end
       { current_domain: current_domain }.merge(extras)
     end

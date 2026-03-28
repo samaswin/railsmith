@@ -22,7 +22,7 @@ RSpec.describe Railsmith::Instrumentation do
     it "dispatches the namespaced event name to subscribers" do
       names = []
       described_class.subscribe { |event_name, _| names << event_name }
-      described_class.instrument("service.call", { domain: :x }) {}
+      described_class.instrument("service.call", { domain: :x }) { nil }
 
       expect(names).to eq(["service.call.railsmith"])
     end
@@ -30,7 +30,7 @@ RSpec.describe Railsmith::Instrumentation do
     it "passes the payload through to subscribers" do
       payloads = []
       described_class.subscribe { |_, payload| payloads << payload }
-      described_class.instrument("service.call", { domain: :billing, action: :create }) {}
+      described_class.instrument("service.call", { domain: :billing, action: :create }) { nil }
 
       expect(payloads.first).to eq({ domain: :billing, action: :create })
     end
@@ -40,7 +40,7 @@ RSpec.describe Railsmith::Instrumentation do
     it "ignores events when the pattern is not a prefix of the full event name" do
       payloads = []
       described_class.subscribe("other") { |_, p| payloads << p }
-      described_class.instrument("service.call", {}) {}
+      described_class.instrument("service.call", {}) { nil }
 
       expect(payloads).to be_empty
     end
@@ -48,7 +48,7 @@ RSpec.describe Railsmith::Instrumentation do
     it "delivers events when the pattern matches the start of the full name" do
       payloads = []
       described_class.subscribe("service.call") { |_, p| payloads << p }
-      described_class.instrument("service.call", { ok: true }) {}
+      described_class.instrument("service.call", { ok: true }) { nil }
 
       expect(payloads.size).to eq(1)
       expect(payloads.first[:ok]).to be true
@@ -57,7 +57,7 @@ RSpec.describe Railsmith::Instrumentation do
 
   describe ".reset!" do
     it "clears plain Ruby subscribers" do
-      described_class.subscribe { |_e, _p| }
+      described_class.subscribe { |_e, _p| nil }
       described_class.reset!
       count = 0
       described_class.instrument("x", {}) { count += 1 }
