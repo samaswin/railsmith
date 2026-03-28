@@ -193,6 +193,26 @@ RSpec.describe "Railsmith::BaseService bulk defaults" do
       expect(Widget.find_by(id: second.id)).to be_nil
     end
 
+    it "destroys records when items are passed as hashes with an id key" do
+      first = Widget.create!(name: "HashA")
+      second = Widget.create!(name: "HashB")
+
+      result =
+        service_class.call(
+          action: :bulk_destroy,
+          params: {
+            transaction_mode: :best_effort,
+            items: [{ id: first.id }, { id: second.id }]
+          },
+          context: {}
+        )
+
+      expect(result).to be_success
+      expect(result.value.fetch(:summary)).to include(total: 2, success_count: 2, failure_count: 0, all_succeeded: true)
+      expect(Widget.find_by(id: first.id)).to be_nil
+      expect(Widget.find_by(id: second.id)).to be_nil
+    end
+
     it "does not destroy any records in all_or_nothing mode when any item fails" do
       first = Widget.create!(name: "A")
       second = Widget.create!(name: "B")
@@ -216,6 +236,40 @@ RSpec.describe "Railsmith::BaseService bulk defaults" do
       )
       expect(Widget.find_by(id: first.id)).not_to be_nil
       expect(Widget.find_by(id: second.id)).not_to be_nil
+    end
+  end
+
+  describe "bulk meta and batching" do
+    it "includes model, operation, transaction_mode, and limit in result meta" do
+      result =
+        service_class.call(
+          action: :bulk_create,
+          params: { items: [{ name: "MetaTest" }], limit: 500, transaction_mode: :best_effort },
+          context: {}
+        )
+
+      expect(result).to be_success
+      expect(result.meta).to include(
+        model: "Widget",
+        operation: "bulk_create",
+        transaction_mode: "best_effort",
+        limit: 500
+      )
+    end
+
+    it "processes all items correctly when batch_size is smaller than item count" do
+      items = (1..5).map { |i| { name: "Batch#{i}" } }
+
+      result =
+        service_class.call(
+          action: :bulk_create,
+          params: { items: items, batch_size: 2, transaction_mode: :best_effort },
+          context: {}
+        )
+
+      expect(result).to be_success
+      expect(result.value.fetch(:summary)).to include(total: 5, success_count: 5, failure_count: 0, all_succeeded: true)
+      expect(Widget.where(name: items.map { |i| i[:name] }).count).to eq(5)
     end
   end
 end

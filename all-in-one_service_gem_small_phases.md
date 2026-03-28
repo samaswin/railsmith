@@ -100,7 +100,7 @@ This file breaks the roadmap into small implementation and testing phases so eac
 
 ---
 
-## Phase 5 - Model Service Generator
+## Phase 5 - Model Service Generator - Completed
 
 ### Implement
 - Add generator to scaffold per-model service classes.

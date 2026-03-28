@@ -41,4 +41,16 @@ RSpec.describe Railsmith::Generators::DomainGenerator do
       expect(second_content).to eq(initial_content)
     end
   end
+
+  it "does not overwrite an existing file without --force" do
+    Dir.mktmpdir("railsmith-domain-generator-spec") do |temp_dir|
+      run_generator(["Billing"], temp_dir)
+      file = File.join(temp_dir, "app/domains/billing.rb")
+      File.write(file, "CUSTOM\n")
+
+      run_generator(["Billing"], temp_dir)
+
+      expect(File.read(file)).to eq("CUSTOM\n")
+    end
+  end
 end

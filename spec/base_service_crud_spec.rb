@@ -82,4 +82,31 @@ RSpec.describe "Railsmith::BaseService CRUD defaults" do
     expect(result.code).to eq("validation_error")
     expect(result.error.to_h.fetch(:details)).to eq({ missing: ["id"] })
   end
+
+  it "returns validation failure when id is missing on update" do
+    result = service_class.call(action: :update, params: { attributes: { name: "X" } }, context: {})
+
+    expect(result).to be_failure
+    expect(result.code).to eq("validation_error")
+    expect(result.error.to_h.fetch(:details)).to eq({ missing: ["id"] })
+  end
+
+  it "returns conflict failure when a unique constraint is violated" do
+    allow_any_instance_of(Widget).to receive(:save).and_raise(ActiveRecord::RecordNotUnique)
+
+    result = service_class.call(action: :create, params: { attributes: { name: "Any" } }, context: {})
+
+    expect(result).to be_failure
+    expect(result.code).to eq("conflict")
+  end
+
+  it "rolls back the transaction and returns failure when an exception occurs during write" do
+    count_before = Widget.count
+    allow_any_instance_of(Widget).to receive(:save).and_raise(StandardError, "db error")
+
+    result = service_class.call(action: :create, params: { attributes: { name: "TxTest" } }, context: {})
+
+    expect(result).to be_failure
+    expect(Widget.count).to eq(count_before)
+  end
 end

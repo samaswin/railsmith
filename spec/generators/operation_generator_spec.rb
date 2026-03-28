@@ -46,6 +46,18 @@ RSpec.describe Railsmith::Generators::OperationGenerator do
     end
   end
 
+  it "does not overwrite an existing file without --force" do
+    Dir.mktmpdir("railsmith-operation-generator-spec") do |temp_dir|
+      run_generator(["Billing::Invoices::Create"], temp_dir)
+      file = File.join(temp_dir, "app/domains/billing/operations/invoices/create.rb")
+      File.write(file, "CUSTOM\n")
+
+      run_generator(["Billing::Invoices::Create"], temp_dir)
+
+      expect(File.read(file)).to eq("CUSTOM\n")
+    end
+  end
+
   it "generates a callable class that returns a Result" do
     Dir.mktmpdir("railsmith-operation-generator-spec") do |temp_dir|
       run_generator(["Billing::Invoices::Create"], temp_dir)
