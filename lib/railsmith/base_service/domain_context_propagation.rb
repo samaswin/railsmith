@@ -15,6 +15,7 @@ module Railsmith
 
       # Wraps action execution with a domain-tagged instrumentation event.
       def execute_action(action:)
+        Railsmith::CrossDomainGuard.emit_if_violation(instance: self, action: action)
         Instrumentation.instrument(
           "service.call",
           service: self.class.name,

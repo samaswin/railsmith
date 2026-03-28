@@ -7,6 +7,8 @@ require_relative "railsmith/result"
 require_relative "railsmith/deep_dup"
 require_relative "railsmith/domain_context"
 require_relative "railsmith/instrumentation"
+require_relative "railsmith/cross_domain_guard"
+require_relative "railsmith/cross_domain_warning_formatter"
 require_relative "railsmith/base_service"
 
 # Entry point for global gem configuration and loading.

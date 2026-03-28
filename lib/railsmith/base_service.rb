@@ -36,6 +36,15 @@ module Railsmith
 
         @model_class = model_class
       end
+
+      # Bounded-context key for this service (optional). When set, mismatches
+      # against +context[:current_domain]+ emit warn-only instrumentation unless
+      # the pair is listed in +Railsmith.configuration.cross_domain_allowlist+.
+      def service_domain(domain_key = nil)
+        return @service_domain if domain_key.nil?
+
+        @service_domain = DomainContext.normalize_current_domain(domain_key)
+      end
     end
 
     attr_reader :params, :context

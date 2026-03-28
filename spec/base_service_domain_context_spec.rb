@@ -3,7 +3,10 @@
 require "spec_helper"
 
 RSpec.describe "Railsmith::BaseService domain context propagation" do
-  after { Railsmith::Instrumentation.reset! }
+  after do
+    Railsmith::Instrumentation.reset!
+    Railsmith.configuration = Railsmith::Configuration.new
+  end
 
   describe "#current_domain" do
     it "exposes the domain key from context" do
@@ -160,6 +163,41 @@ RSpec.describe "Railsmith::BaseService domain context propagation" do
 
       service_class.call(action: :probe, params: {}, context: original_context)
       expect(original_context[:current_domain]).to eq(:billing)
+    end
+  end
+
+  describe "cross-domain guardrails (warn-only)" do
+    it "still returns a successful result when a cross-domain warning fires" do
+      Railsmith::Instrumentation.subscribe("cross_domain.warning") { |_e, _p| nil }
+
+      service_class = Class.new(Railsmith::BaseService) do
+        service_domain :catalog
+
+        def create
+          Railsmith::Result.success(value: { created: true })
+        end
+      end
+
+      result = service_class.call(action: :create, params: {}, context: { current_domain: :billing })
+      expect(result).to be_success
+      expect(result.value).to eq({ created: true })
+    end
+
+    it "emits cross_domain.warning before service.call for ordering subscribers" do
+      order = []
+      Railsmith::Instrumentation.subscribe("cross_domain.warning") { order << :cross_domain }
+      Railsmith::Instrumentation.subscribe("service.call") { order << :service_call }
+
+      service_class = Class.new(Railsmith::BaseService) do
+        service_domain :catalog
+
+        def create
+          Railsmith::Result.success(value: {})
+        end
+      end
+
+      service_class.call(action: :create, params: {}, context: { current_domain: :billing })
+      expect(order).to eq(%i[cross_domain service_call])
     end
   end
 end

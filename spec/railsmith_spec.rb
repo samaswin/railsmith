@@ -12,6 +12,8 @@ RSpec.describe Railsmith do
       expect(config.warn_on_cross_domain_calls).to be(true)
       expect(config.strict_mode).to be(false)
       expect(config.serializer_adapter).to eq(:auto)
+      expect(config.cross_domain_allowlist).to eq([])
+      expect(config.on_cross_domain_violation).to be_nil
     end
   end
 
