@@ -71,10 +71,9 @@ rails generate railsmith:model_service User --namespace=Operations
 ## 4. Make Your First Call
 
 ```ruby
-result = Operations::UserService.call(
+result = UserService.call(
   action: :create,
-  params: { attributes: { name: "Alice", email: "alice@example.com" } },
-  context: {}
+  params: { attributes: { name: "Alice", email: "alice@example.com" } }
 )
 
 if result.success?
@@ -86,6 +85,16 @@ end
 ```
 
 Every service call returns a `Railsmith::Result`. You never rescue exceptions from service calls — failures surface as structured `Result` objects.
+
+`context:` is optional. When omitted, Railsmith builds a context automatically (with an auto-generated `request_id`). Pass one explicitly to attach domain, actor, or tracing data:
+
+```ruby
+UserService.call(
+  action: :create,
+  params: { attributes: { name: "Alice", email: "alice@example.com" } },
+  context: Railsmith::Context.new(domain: :identity, actor_id: current_user.id)
+)
+```
 
 ---
 
@@ -112,5 +121,6 @@ result.error.to_h      # => { code: ..., message: ..., details: ... }
 
 ## 6. Next Steps
 
-- **[Cookbook](cookbook.md)** — CRUD customization, bulk operations, domain context, error mapping, custom actions.
+- **[Cookbook](cookbook.md)** — CRUD customization, bulk operations, domain context, thread-local context, error mapping, custom actions.
 - **[Legacy Adoption Guide](legacy-adoption.md)** — Incrementally migrate an existing Rails app to Railsmith.
+- **[Migration Guide](../MIGRATION.md)** — Upgrade notes from 1.0.0 to 1.1.0.

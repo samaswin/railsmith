@@ -13,37 +13,37 @@ rails generate railsmith:model_service Post
 ```
 
 ```ruby
-# app/services/operations/post_service.rb
-module Operations
-  class PostService < Railsmith::BaseService
-    model(Post)
-  end
+# app/services/post_service.rb
+class PostService < Railsmith::BaseService
+  model(Post)
 end
 ```
 
-The three default actions work immediately:
+The five default actions work immediately (`context:` is optional on all calls):
 
 ```ruby
 # Create
-result = Operations::PostService.call(
+result = PostService.call(
   action: :create,
-  params: { attributes: { title: "Hello", body: "World" } },
-  context: {}
+  params: { attributes: { title: "Hello", body: "World" } }
 )
 
 # Update
-result = Operations::PostService.call(
+result = PostService.call(
   action: :update,
-  params: { id: 1, attributes: { title: "Updated" } },
-  context: {}
+  params: { id: 1, attributes: { title: "Updated" } }
 )
 
 # Destroy
-result = Operations::PostService.call(
-  action: :destroy,
-  params: { id: 1 },
-  context: {}
-)
+result = PostService.call(action: :destroy, params: { id: 1 })
+
+# Find a single record by ID
+result = PostService.call(action: :find, params: { id: 1 })
+result.value  # => <Post id=1>
+
+# List all records
+result = PostService.call(action: :list, params: {})
+result.value  # => [<Post>, ...]
 ```
 
 ---
@@ -53,15 +53,13 @@ result = Operations::PostService.call(
 Override `sanitize_attributes` to strip or transform attributes before the record is written:
 
 ```ruby
-module Operations
-  class PostService < Railsmith::BaseService
-    model(Post)
+class PostService < Railsmith::BaseService
+  model(Post)
 
-    private
+  private
 
-    def sanitize_attributes(attributes)
-      attributes.except(:admin_override, :internal_flag)
-    end
+  def sanitize_attributes(attributes)
+    attributes.except(:admin_override, :internal_flag)
   end
 end
 ```
@@ -79,15 +77,28 @@ end
 ### Custom finder logic
 
 ```ruby
-module Operations
-  class PostService < Railsmith::BaseService
-    model(Post)
+class PostService < Railsmith::BaseService
+  model(Post)
 
-    private
+  private
 
-    def find_record(model_klass, id)
-      model_klass.published.find_by(id: id)
-    end
+  def find_record(model_klass, id)
+    model_klass.published.find_by(id: id)
+  end
+end
+```
+
+### Filtering list results
+
+Override `list` to apply scopes or filters:
+
+```ruby
+class PostService < Railsmith::BaseService
+  model(Post)
+
+  def list
+    posts = Post.where(published: params[:published]).order(:created_at)
+    Result.success(value: posts)
   end
 end
 ```
@@ -99,22 +110,20 @@ end
 Define a method with the action name. Use `Result` and `Errors` directly:
 
 ```ruby
-module Operations
-  class PostService < Railsmith::BaseService
-    model(Post)
+class PostService < Railsmith::BaseService
+  model(Post)
 
-    def publish
-      id = params[:id]
-      return Result.failure(error: Errors.validation_error(details: { missing: ["id"] })) unless id
+  def publish
+    id = params[:id]
+    return Result.failure(error: Errors.validation_error(details: { missing: ["id"] })) unless id
 
-      post = Post.find_by(id: id)
-      return Result.failure(error: Errors.not_found(message: "Post not found", details: { id: id })) unless post
+    post = Post.find_by(id: id)
+    return Result.failure(error: Errors.not_found(message: "Post not found", details: { id: id })) unless post
 
-      return Result.failure(error: Errors.conflict(message: "Already published")) if post.published?
+    return Result.failure(error: Errors.conflict(message: "Already published")) if post.published?
 
-      post.update!(published_at: Time.current)
-      Result.success(value: post)
-    end
+    post.update!(published_at: Time.current)
+    Result.success(value: post)
   end
 end
 ```
@@ -122,11 +131,7 @@ end
 Call it the same way:
 
 ```ruby
-result = Operations::PostService.call(
-  action: :publish,
-  params: { id: 42 },
-  context: {}
-)
+result = PostService.call(action: :publish, params: { id: 42 })
 ```
 
 ---
@@ -136,29 +141,28 @@ result = Operations::PostService.call(
 Pass `context` through to preserve domain tracking:
 
 ```ruby
-module Operations
-  class OrderService < Railsmith::BaseService
-    model(Order)
+class OrderService < Railsmith::BaseService
+  model(Order)
 
-    def place
-      # Validate stock via another service
-      stock_result = Operations::InventoryService.call(
-        action: :reserve,
-        params: { sku: params[:sku], qty: params[:qty] },
-        context: context  # forward the same context
-      )
-      return stock_result if stock_result.failure?
+  def place
+    # Validate stock via another service
+    stock_result = InventoryService.call(
+      action: :reserve,
+      params: { sku: params[:sku], qty: params[:qty] },
+      context: context  # forward the same context
+    )
+    return stock_result if stock_result.failure?
 
-      result = Operations::OrderService.call(
-        action: :create,
-        params: { attributes: { sku: params[:sku], qty: params[:qty] } },
-        context: context
-      )
-      result
-    end
+    OrderService.call(
+      action: :create,
+      params: { attributes: { sku: params[:sku], qty: params[:qty] } },
+      context: context
+    )
   end
 end
 ```
+
+Alternatively, use thread-local context propagation (see [Thread-local context](#thread-local-context-propagation)) so you don't need to thread `context:` through every call.
 
 ---
 
@@ -167,7 +171,7 @@ end
 ### bulk_create
 
 ```ruby
-result = Operations::UserService.call(
+result = UserService.call(
   action: :bulk_create,
   params: {
     items: [
@@ -197,7 +201,7 @@ end
 Each item must include an `id` key and an `attributes` key:
 
 ```ruby
-result = Operations::UserService.call(
+result = UserService.call(
   action: :bulk_update,
   params: {
     items: [
@@ -217,14 +221,14 @@ Pass IDs directly or as hashes:
 
 ```ruby
 # Array of IDs
-result = Operations::UserService.call(
+result = UserService.call(
   action: :bulk_destroy,
   params: { items: [1, 2, 3] },
   context: {}
 )
 
 # Array of hashes
-result = Operations::UserService.call(
+result = UserService.call(
   action: :bulk_destroy,
   params: { items: [{ id: 1 }, { id: 2 }] },
   context: {}
@@ -242,7 +246,7 @@ result = Operations::UserService.call(
 
 ```ruby
 # All-or-nothing import
-result = Operations::UserService.call(
+result = UserService.call(
   action: :bulk_create,
   params: {
     items: rows,
@@ -309,7 +313,7 @@ module Billing
   module Services
     class InvoiceService < Railsmith::BaseService
       model(Billing::Invoice)
-      service_domain :billing
+      domain :billing
     end
   end
 end
@@ -317,13 +321,16 @@ end
 
 ---
 
-### Pass domain context on every call
+### Pass domain context on a call
+
+Use `Railsmith::Context` to attach domain and tracing data. Extra keys (`actor_id`, `request_id`, etc.) are top-level — no nested `:meta` hash:
 
 ```ruby
-ctx = Railsmith::DomainContext.new(
-  current_domain: :billing,
-  meta: { request_id: "req-abc123", actor_id: current_user.id }
-).to_h
+ctx = Railsmith::Context.new(
+  domain: :billing,
+  actor_id: current_user.id
+  # request_id is auto-generated as a UUID when omitted
+)
 
 result = Billing::Services::InvoiceService.call(
   action: :create,
@@ -332,13 +339,45 @@ result = Billing::Services::InvoiceService.call(
 )
 ```
 
-`DomainContext#to_h` merges `current_domain` and all `meta` keys into one flat hash, which is what `context:` expects.
+To forward an existing request ID (e.g. from an HTTP header):
+
+```ruby
+ctx = Railsmith::Context.new(
+  domain: :billing,
+  request_id: request.headers["X-Request-Id"],
+  actor_id: current_user.id
+)
+```
+
+---
+
+### Thread-local context propagation
+
+Set context once at the edge of a request instead of threading it through every call:
+
+```ruby
+# app/controllers/application_controller.rb
+around_action do |_, block|
+  Railsmith::Context.with(domain: :web, actor_id: current_user&.id) { block.call }
+end
+```
+
+Services automatically inherit the thread-local context when no explicit `context:` is passed:
+
+```ruby
+# No context: needed — picked up from Context.with above
+UserService.call(action: :create, params: { attributes: { name: "Alice" } })
+```
+
+Resolution order: **explicit `context:` arg > `Context.current` > auto-built context**.
+
+`Context.with` restores the previous value after the block, making it safe for nested calls and concurrent requests.
 
 ---
 
 ### Cross-domain detection
 
-When `current_domain` in the context differs from a service's declared `service_domain`, Railsmith emits a warning. By default this is non-blocking.
+When the context domain differs from a service's declared `domain`, Railsmith emits a warning. By default this is non-blocking.
 
 ```ruby
 # context says :catalog, service declares :billing — warning fires
@@ -391,33 +430,39 @@ Allowlisted pairs do not emit warnings.
 rails generate railsmith:operation Billing::Invoices::Finalize
 ```
 
-Creates `app/domains/billing/operations/invoices/finalize.rb`:
+Creates `app/domains/billing/invoices/finalize.rb`:
 
 ```ruby
 module Billing
-  module Operations
-    module Invoices
-      class Finalize
-        def self.call(params: {}, context: {})
-          new(params:, context:).call
-        end
+  module Invoices
+    class Finalize
+      def self.call(params: {}, context: {})
+        new(params:, context:).call
+      end
 
-        attr_reader :params, :context
+      attr_reader :params, :context
 
-        def initialize(params:, context:)
-          @params  = Railsmith.deep_dup(params  || {})
-          @context = Railsmith.deep_dup(context || {})
-        end
+      def initialize(params:, context:)
+        @params  = Railsmith.deep_dup(params  || {})
+        @context = Railsmith.deep_dup(context || {})
+      end
 
-        def call
-          current_domain = Railsmith::DomainContext.normalize_current_domain(context[:current_domain])
-          # Your logic here
-          Railsmith::Result.success(value: { current_domain: current_domain })
-        end
+      def call
+        current_domain = Railsmith::Context.normalize_current_domain(context[:current_domain])
+        # Your logic here
+        Railsmith::Result.success(value: { current_domain: current_domain })
       end
     end
   end
 end
+```
+
+To keep the old `Operations` interstitial module:
+
+```bash
+rails generate railsmith:operation Billing::Invoices::Finalize --namespace=Operations
+# => app/domains/billing/operations/invoices/finalize.rb
+# => Billing::Operations::Invoices::Finalize
 ```
 
 ---
@@ -494,10 +539,10 @@ The default `create`, `update`, and `destroy` actions catch and map these except
 ```ruby
 class UsersController < ApplicationController
   def create
-    result = Operations::UserService.call(
+    result = UserService.call(
       action: :create,
       params: { attributes: user_params },
-      context: { current_domain: :identity }
+      context: Railsmith::Context.new(domain: :identity)
     )
 
     if result.success?

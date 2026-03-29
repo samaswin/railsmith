@@ -83,10 +83,9 @@ end
 
 ```ruby
 def create
-  result = Operations::PostService.call(
+  result = PostService.call(
     action: :create,
-    params: { attributes: post_params.to_h },
-    context: {}
+    params: { attributes: post_params.to_h }
   )
 
   if result.success?
@@ -148,10 +147,9 @@ Controller:
 
 ```ruby
 def upgrade
-  result = Operations::UserService.call(
+  result = UserService.call(
     action: :upgrade,
-    params: { id: params[:id] },
-    context: {}
+    params: { id: params[:id] }
   )
   result.success? ? redirect_to result.value : redirect_back(fallback_location: root_path)
 end
@@ -169,14 +167,14 @@ rails generate railsmith:model_service Billing::Invoice --domain=Billing
 rails generate railsmith:model_service Billing::Payment --domain=Billing
 ```
 
-Move the service files from `app/services/operations/` to `app/domains/billing/services/` and add `service_domain`:
+Move the service files from `app/services/operations/` to `app/domains/billing/services/` and add `domain`:
 
 ```ruby
 module Billing
   module Services
     class InvoiceService < Railsmith::BaseService
       model(Billing::Invoice)
-      service_domain :billing
+      domain :billing
     end
   end
 end
@@ -231,14 +229,13 @@ Use this checklist per model:
 **For services**, write isolated unit specs:
 
 ```ruby
-# spec/services/operations/post_service_spec.rb
-RSpec.describe Operations::PostService do
+# spec/services/post_service_spec.rb
+RSpec.describe PostService do
   describe "#create" do
     it "creates a post" do
       result = described_class.call(
         action: :create,
-        params: { attributes: { title: "Hello", body: "World" } },
-        context: {}
+        params: { attributes: { title: "Hello", body: "World" } }
       )
       expect(result).to be_success
       expect(result.value).to be_a(Post)
@@ -248,8 +245,7 @@ RSpec.describe Operations::PostService do
     it "returns validation_error when title is blank" do
       result = described_class.call(
         action: :create,
-        params: { attributes: { title: "", body: "World" } },
-        context: {}
+        params: { attributes: { title: "", body: "World" } }
       )
       expect(result).to be_failure
       expect(result.code).to eq("validation_error")
