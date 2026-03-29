@@ -11,6 +11,7 @@ module Railsmith
         @code = code.to_s
         @message = message.to_s
         @details = details
+        freeze
       end
 
       def to_h

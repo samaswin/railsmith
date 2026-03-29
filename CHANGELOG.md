@@ -1,0 +1,64 @@
+# Changelog
+
+All notable changes to Railsmith are documented here.
+
+Format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
+Versioning follows [Semantic Versioning](https://semver.org/).
+
+---
+
+## [1.0.0] — 2026-03-29
+
+First stable release. Public DSL and result contract are now frozen.
+
+### Added
+
+#### Core
+- `Railsmith::Result` — immutable value object with `success?`, `failure?`, `value`, `error`, `code`, `meta`, and `to_h`.
+- `Railsmith::Errors` — normalized error builders: `validation_error`, `not_found`, `conflict`, `unauthorized`, `unexpected`.
+- `Railsmith::BaseService` — lifecycle entrypoint `call(action:, params:, context:)` with deterministic hook ordering and subclass override points.
+
+#### CRUD
+- Default `create`, `update`, and `destroy` actions on any service that declares `model(ModelClass)`.
+- Automatic exception mapping: `ActiveRecord::RecordNotFound` → `not_found`, `ActiveRecord::RecordInvalid` → `validation_error`, `ActiveRecord::RecordNotUnique` → `conflict`.
+- Safe record lookup helper with consistent not-found failure shape.
+
+#### Bulk Operations
+- `bulk_create`, `bulk_update`, `bulk_destroy` on model-backed services.
+- Per-item result aggregation with batch `summary` (`total`, `success_count`, `failure_count`, `all_succeeded`).
+- Transaction modes: `:all_or_nothing` (rollback on any failure) and `:best_effort` (commit successful items).
+- Configurable batch size limit.
+
+#### Domain Context
+- `Railsmith::DomainContext` — carries `current_domain` and arbitrary `meta` through a call chain.
+- `service_domain :name` declaration on `BaseService` subclasses.
+- Context propagation guard: emits `cross_domain.warning.railsmith` ActiveSupport instrumentation event when context domain differs from service domain.
+- Allowlist configuration for approved cross-domain crossings.
+- `on_cross_domain_violation` callback hook for custom handling.
+
+#### Architecture Checks
+- `Railsmith::ArchChecks::DirectModelAccessChecker` — static analysis for controllers that access models directly.
+- `Railsmith::ArchChecks::MissingServiceUsageChecker` — flags controller actions that touch models without calling a service-style entrypoint.
+- Text and JSON report formatters (`Railsmith::ArchReport`).
+- `Railsmith::ArchChecks::Cli` — Ruby API for the same scan as `railsmith:arch_check`, with optional `env:`, `output:`, and `warn_proc:` for tests and embedding.
+- `rake railsmith:arch_check` task with `RAILSMITH_PATHS`, `RAILSMITH_FORMAT`, and `RAILSMITH_FAIL_ON_ARCH_VIOLATIONS` environment variable support; the task delegates to `Railsmith::ArchChecks::Cli.run` (same report shape and exit semantics for callers).
+
+#### Generators
+- `railsmith:install` — creates `config/initializers/railsmith.rb` and `app/services/` directory tree.
+- `railsmith:domain NAME` — scaffolds a domain module skeleton with conventional subdirectories.
+- `railsmith:model_service MODEL` — scaffolds a `BaseService` subclass, namespace-aware with `--domain` flag.
+- `railsmith:operation NAME` — scaffolds a plain-Ruby operation with `call` entrypoint returning `Railsmith::Result`.
+
+#### Configuration
+- `Railsmith.configure` block with: `warn_on_cross_domain_calls`, `strict_mode`, `on_cross_domain_violation`, `cross_domain_allowlist`, `fail_on_arch_violations`.
+
+#### Documentation
+- [Quickstart](docs/quickstart.md)
+- [Cookbook](docs/cookbook.md) — CRUD, bulk, domain context, error mapping, observability
+- [Legacy Adoption Guide](docs/legacy-adoption.md) — incremental migration strategy
+
+---
+
+## [0.1.0] — pre-release
+
+Internal bootstrap release. Gem skeleton, CI baseline, and initial service scaffolding. Not intended for production use.

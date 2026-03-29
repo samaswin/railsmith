@@ -3,6 +3,7 @@
 module Railsmith
   class BaseService
     # Maps common persistence exceptions to Railsmith error payloads.
+    # @api private
     module CrudErrorMapping
       private
 

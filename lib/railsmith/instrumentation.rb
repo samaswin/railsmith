@@ -37,16 +37,16 @@ module Railsmith
         subscribers << { pattern: pattern, handler: block }
       end
 
-      def subscribers
-        @subscribers ||= []
-      end
-
       # Remove all plain Ruby subscribers (useful in tests).
       def reset!
         @subscribers = []
       end
 
       private
+
+      def subscribers
+        @subscribers ||= []
+      end
 
       def active_support_notifications?
         defined?(ActiveSupport::Notifications)

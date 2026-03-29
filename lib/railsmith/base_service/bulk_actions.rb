@@ -3,6 +3,7 @@
 module Railsmith
   class BaseService
     # Default bulk action implementations.
+    # @api private
     module BulkActions
       include BulkParams
       include BulkExecution

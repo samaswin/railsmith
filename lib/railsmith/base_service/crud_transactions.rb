@@ -3,6 +3,7 @@
 module Railsmith
   class BaseService
     # Transaction helpers for write-path actions.
+    # @api private
     module CrudTransactions
       private
 

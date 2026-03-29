@@ -1,6 +1,29 @@
 # frozen_string_literal: true
 
 RSpec.describe Railsmith::Result do
+  describe ".new" do
+    it "is private — callers must use .success or .failure" do
+      expect { described_class.new(success: true, value: nil, error: nil, meta: {}) }
+        .to raise_error(NoMethodError)
+    end
+  end
+
+  describe "immutability" do
+    it "freezes the result object" do
+      expect(described_class.success(value: :ok)).to be_frozen
+    end
+
+    it "freezes failure results" do
+      expect(described_class.failure(code: :not_found, message: "Missing")).to be_frozen
+    end
+
+    it "freezes the embedded error payload" do
+      result = described_class.failure(code: :conflict, message: "Oops")
+
+      expect(result.error).to be_frozen
+    end
+  end
+
   describe ".success" do
     it "builds a success result with queries and accessors" do
       result = described_class.success(value: { id: 123 }, meta: { request_id: "abc" })

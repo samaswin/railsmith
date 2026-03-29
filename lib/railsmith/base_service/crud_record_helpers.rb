@@ -3,6 +3,7 @@
 module Railsmith
   class BaseService
     # Record building and lookup helpers for CRUD defaults.
+    # @api private
     module CrudRecordHelpers
       private
 

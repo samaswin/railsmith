@@ -3,6 +3,7 @@
 module Railsmith
   class BaseService
     # Implements bulk execution strategies (transaction modes, limits).
+    # @api private
     module BulkExecution
       private
 

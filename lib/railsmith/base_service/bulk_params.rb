@@ -3,6 +3,7 @@
 module Railsmith
   class BaseService
     # Parses and normalizes bulk action params.
+    # @api private
     module BulkParams
       DEFAULT_BULK_LIMIT = 1000
       DEFAULT_BATCH_SIZE = 100

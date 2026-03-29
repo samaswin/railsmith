@@ -3,6 +3,7 @@
 module Railsmith
   class BaseService
     # Deep-duplication helpers for params/context immutability.
+    # @api private
     module DupHelpers
       private
 

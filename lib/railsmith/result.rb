@@ -19,6 +19,8 @@ module Railsmith
       new(success: false, value: nil, error: normalized_error, meta: meta || {})
     end
 
+    private_class_method :new
+
     def initialize(success:, value:, error:, meta:)
       @success = success ? true : false
       @value = value

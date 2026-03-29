@@ -74,5 +74,25 @@ RSpec.describe Railsmith::Errors do
       expect(error.code).to eq("not_found")
       expect(error.message).to eq("Nope")
     end
+
+    it "is frozen after construction" do
+      error = described_class.new(code: :conflict, message: "Already exists")
+
+      expect(error).to be_frozen
+    end
+  end
+
+  describe "factory immutability" do
+    it "all factory methods return frozen payloads" do
+      payloads = [
+        described_class.validation_error,
+        described_class.not_found,
+        described_class.conflict,
+        described_class.unauthorized,
+        described_class.unexpected
+      ]
+
+      payloads.each { |p| expect(p).to be_frozen }
+    end
   end
 end

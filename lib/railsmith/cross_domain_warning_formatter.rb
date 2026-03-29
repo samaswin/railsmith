@@ -23,6 +23,11 @@ module Railsmith
       JSON.generate(ordered_hash(payload))
     end
 
+    # Space-separated key=value for quick human scanning (values are JSON-encoded).
+    def as_key_value_line(payload)
+      (canonical_kv_parts(payload) + extra_kv_parts(payload)).join(" ")
+    end
+
     def ordered_hash(payload)
       ordered = CANONICAL_KEYS.each_with_object({}) do |key, acc|
         value = payload[key]
@@ -33,11 +38,6 @@ module Railsmith
         ordered[string_key] = json_scalar(value) unless ordered.key?(string_key) || value.nil?
       end
       ordered
-    end
-
-    # Space-separated key=value for quick human scanning (values are JSON-encoded).
-    def as_key_value_line(payload)
-      (canonical_kv_parts(payload) + extra_kv_parts(payload)).join(" ")
     end
 
     def canonical_kv_parts(payload)
@@ -60,5 +60,7 @@ module Railsmith
     def json_scalar(value)
       value.is_a?(Symbol) ? value.to_s : value
     end
+
+    private_class_method :ordered_hash, :canonical_kv_parts, :extra_kv_parts, :json_scalar
   end
 end

@@ -3,6 +3,7 @@
 module Railsmith
   class BaseService
     # Default `create`/`update`/`destroy` action implementations.
+    # @api private
     module CrudActions
       def create
         model_klass = model_class

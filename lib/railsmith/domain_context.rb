@@ -21,6 +21,7 @@ module Railsmith
     def initialize(current_domain: nil, meta: {})
       @current_domain = self.class.normalize_current_domain(current_domain)
       @meta = (meta || {}).freeze
+      freeze
     end
 
     # Serializes to a plain hash suitable for passing into service context.

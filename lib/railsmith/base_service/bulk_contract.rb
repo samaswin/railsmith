@@ -3,6 +3,7 @@
 module Railsmith
   class BaseService
     # Defines the bulk result/value contract.
+    # @api private
     module BulkContract
       private
 

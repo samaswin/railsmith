@@ -3,6 +3,7 @@
 module Railsmith
   class BaseService
     # Model resolution helpers for CRUD defaults.
+    # @api private
     module CrudModelResolution
       private
 
