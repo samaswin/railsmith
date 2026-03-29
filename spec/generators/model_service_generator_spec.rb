@@ -36,7 +36,7 @@ RSpec.describe Railsmith::Generators::ModelServiceGenerator do
     end
   end
 
-  it "generates a service with --namespace wrapping and service_domain from first segment" do
+  it "generates a service with --namespace wrapping and domain from first segment" do
     Dir.mktmpdir("railsmith-model-generator-spec") do |temp_dir|
       run_generator(["Invoice", "--namespace=Billing::Services"], temp_dir)
 
@@ -47,7 +47,7 @@ RSpec.describe Railsmith::Generators::ModelServiceGenerator do
       expect(content).to include("module Billing")
       expect(content).to include("module Services")
       expect(content).to include("class InvoiceService < Railsmith::BaseService")
-      expect(content).to include("service_domain :billing")
+      expect(content).to include("domain :billing")
     end
   end
 

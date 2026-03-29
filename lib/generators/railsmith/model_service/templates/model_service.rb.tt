@@ -6,7 +6,7 @@ module <%= mod %>
 <%= class_indent %>class <%= service_class_name.split("::").last %> < Railsmith::BaseService
 <%= member_indent %>model(<%= class_name %>)
 <% if service_domain_name -%>
-<%= member_indent %>service_domain :<%= service_domain_name %>
+<%= member_indent %>domain :<%= service_domain_name %>
 <% end -%>
 <% if stub_action?("create") -%>
 

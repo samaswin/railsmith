@@ -48,17 +48,23 @@ end
 rails generate railsmith:model_service User
 ```
 
-Creates `app/services/operations/user_service.rb`:
+Creates `app/services/user_service.rb`:
 
 ```ruby
-module Operations
-  class UserService < Railsmith::BaseService
-    model(User)
-  end
+class UserService < Railsmith::BaseService
+  model(User)
 end
 ```
 
-The `model` declaration wires up the three default CRUD actions (`create`, `update`, `destroy`) and the three bulk actions (`bulk_create`, `bulk_update`, `bulk_destroy`) automatically — no extra code needed for standard cases.
+The `model` declaration wires up the default CRUD actions (`create`, `update`, `destroy`, `find`, `list`) and the three bulk actions (`bulk_create`, `bulk_update`, `bulk_destroy`) automatically — no extra code needed for standard cases.
+
+To generate under a namespace, pass `--namespace`:
+
+```bash
+rails generate railsmith:model_service User --namespace=Operations
+# => app/services/operations/user_service.rb
+# => module Operations; class UserService
+```
 
 ---
 

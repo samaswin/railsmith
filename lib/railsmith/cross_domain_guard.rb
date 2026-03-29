@@ -38,7 +38,7 @@ module Railsmith
 
     def self.domain_mismatch(instance)
       context_domain = Context.normalize_current_domain(instance.context[:current_domain])
-      service_domain = instance.class.service_domain
+      service_domain = instance.class.domain
       return nil if context_domain.nil? || service_domain.nil?
       return nil if context_domain == service_domain
 

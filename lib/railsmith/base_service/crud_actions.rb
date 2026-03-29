@@ -41,6 +41,22 @@ module Railsmith
         end
       end
 
+      def find
+        model_klass = model_class
+        return missing_model_class_result unless model_klass
+
+        find_record(model_klass, record_id)
+      end
+
+      def list
+        model_klass = model_class
+        return missing_model_class_result unless model_klass
+
+        Result.success(value: model_klass.all)
+      rescue StandardError => e
+        Result.failure(error: map_exception_to_error(e))
+      end
+
       private
 
       def persist_write(record, method_name:)

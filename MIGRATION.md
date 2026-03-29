@@ -147,6 +147,121 @@ expect(ctx.to_h).to eq(current_domain: :billing, actor_id: 42, request_id: "r1")
 
 ---
 
+### `context:` is now optional at the call site (non-breaking)
+
+`BaseService.call` no longer requires `context:`. Omitting it, passing `nil`, or passing `{}` all produce a valid `Context` with an auto-generated `request_id`.
+
+```ruby
+# All of these are equivalent and valid in 1.1.0
+UserService.call(action: :create, params: { attributes: { name: "Alice" } })
+UserService.call(action: :create, params: { ... }, context: {})
+UserService.call(action: :create, params: { ... }, context: nil)
+```
+
+If you previously passed `context: {}` as a no-op placeholder, you can remove it — the behaviour is identical.
+
+When you do pass a context value, `Context.build` handles coercion:
+
+| Value passed | Result |
+|---|---|
+| A `Railsmith::Context` | used as-is |
+| A hash with `:domain` or `:current_domain` | wrapped in `Context.new(**hash)` |
+| `nil` or `{}` | new `Context` with auto `request_id` |
+
+**No migration required.** Existing code that passes a full context is unaffected.
+
+---
+
+### New read actions: `find` and `list` (non-breaking, additive)
+
+Two new CRUD actions are available on all model-backed services.
+
+```ruby
+# Find a single record by ID
+result = UserService.call(action: :find, params: { id: 1 })
+result.value  # => <User id=1>
+
+# List all records (override to filter)
+result = UserService.call(action: :list, params: {})
+result.value  # => [<User>, ...]
+```
+
+Default `list` calls `model_class.all`. Override it when you need filtering:
+
+```ruby
+class UserService < Railsmith::BaseService
+  model User
+
+  def list
+    users = User.where(active: params[:active]).order(:name)
+    Result.success(value: users)
+  end
+end
+```
+
+**No migration required.** These are new methods; existing overrides are unaffected. If you had a custom `find` or `list` method that returns a different shape, it will shadow the default — check your override's return value matches `Result.success`/`Result.failure`.
+
+---
+
+### Thread-local context propagation (opt-in, non-breaking)
+
+`Railsmith::Context.with(...)` sets a thread-local context for the duration of a block. Services automatically inherit it when no explicit `context:` is passed.
+
+```ruby
+# Set once at the edge (e.g. ApplicationController)
+around_action do |_, block|
+  Railsmith::Context.with(domain: :web, actor_id: current_user&.id) { block.call }
+end
+
+# Services pick it up automatically — no need to thread it through every call
+UserService.call(action: :create, params: { ... })
+```
+
+Resolution order: **explicit `context:` arg > `Context.current` > auto-built empty context**.
+
+Explicit `context:` always wins, so existing code that passes context explicitly is completely unaffected.
+
+`Context.current` returns the current thread-local `Context` or `nil`. `Context.with` restores the previous value after the block, making it safe for nested calls and concurrent requests.
+
+**No migration required.** This is fully opt-in.
+
+---
+
+### `service_domain` → `domain` DSL (non-breaking, deprecation warning)
+
+The `service_domain` class macro is deprecated in favour of `domain`.
+
+```ruby
+# Before (1.0.0)
+class InvoiceService < Railsmith::BaseService
+  model Invoice
+  service_domain :billing
+end
+
+# After (1.1.0)
+class InvoiceService < Railsmith::BaseService
+  model Invoice
+  domain :billing
+end
+```
+
+`service_domain` still works but emits a deprecation warning. It will be removed in the next major release.
+
+#### Migration steps
+
+```
+grep -r "service_domain" app/
+```
+
+Replace each occurrence:
+
+```ruby
+service_domain :billing   # before
+domain :billing           # after
+```
+
+---
+
 ## Upgrading from 0.x (pre-release) to 1.0.0
 
 Railsmith 1.0.0 is the first stable release. If you were using the 0.x development version, the changes below are required before upgrading.

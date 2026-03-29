@@ -27,22 +27,62 @@ RSpec.describe Railsmith::BaseService do
       expect(result.error.to_h.fetch(:details)).to eq({ action: :nope })
     end
 
-    it "passes through context but duplicates it to avoid mutation leaks" do
-      context = { actor: { id: 123 }, flags: %w[a b] }
+    it "passes through context but isolates extras from the original to avoid mutation leaks" do
+      original_context = { actor: { id: 123 }, flags: %w[a b] }
 
       service_class = Class.new(described_class) do
         def create
+          # Nested objects in extras are mutable (deep-duped from original)
           context[:actor][:id] = 999
           context[:flags] << "c"
-          Railsmith::Result.success(value: context)
+          Railsmith::Result.success(value: { actor: context[:actor], flags: context[:flags] })
         end
       end
 
-      result = service_class.call(action: :create, params: {}, context: context)
+      result = service_class.call(action: :create, params: {}, context: original_context)
 
       expect(result).to be_success
-      expect(context).to eq({ actor: { id: 123 }, flags: %w[a b] })
+      expect(original_context).to eq({ actor: { id: 123 }, flags: %w[a b] })
       expect(result.value).to eq({ actor: { id: 999 }, flags: %w[a b c] })
+    end
+
+    context "thread-local context propagation" do
+      probe_service = Class.new(Railsmith::BaseService) do
+        def probe
+          Railsmith::Result.success(value: { domain: context.domain, request_id: context.request_id })
+        end
+      end
+
+      around { |ex| Railsmith::Context.current = nil; ex.run; Railsmith::Context.current = nil }
+
+      it "uses the thread-local context when no context: arg is passed" do
+        Railsmith::Context.with(domain: :web, request_id: "tl-1") do
+          result = probe_service.call(action: :probe, params: {})
+          expect(result.value).to eq({ domain: :web, request_id: "tl-1" })
+        end
+      end
+
+      it "falls back to an auto-built context when no thread-local is set" do
+        result = probe_service.call(action: :probe, params: {})
+        expect(result.value[:domain]).to be_nil
+        expect(result.value[:request_id]).to match(/\A[0-9a-f\-]{36}\z/)
+      end
+
+      it "gives explicit context: precedence over the thread-local context" do
+        explicit = Railsmith::Context.new(domain: :explicit, request_id: "ex-1")
+        Railsmith::Context.with(domain: :thread_local, request_id: "tl-2") do
+          result = probe_service.call(action: :probe, params: {}, context: explicit)
+          expect(result.value).to eq({ domain: :explicit, request_id: "ex-1" })
+        end
+      end
+
+      it "gives explicit context: nil precedence over the thread-local context (builds empty context)" do
+        Railsmith::Context.with(domain: :thread_local, request_id: "tl-3") do
+          result = probe_service.call(action: :probe, params: {}, context: nil)
+          expect(result.value[:domain]).to be_nil
+          expect(result.value[:request_id]).not_to eq("tl-3")
+        end
+      end
     end
 
     it "treats non-Result action return values as success values" do

@@ -26,9 +26,19 @@ module Railsmith
     include CrudErrorMapping
     include CrudTransactions
 
+    # Sentinel used to distinguish "context not passed" from "context: nil".
+    UNSET_CONTEXT = Object.new.freeze
+    private_constant :UNSET_CONTEXT
+
     class << self
-      def call(action:, params: {}, context: {})
-        new(params:, context:).call(action:)
+      def call(action:, params: {}, context: UNSET_CONTEXT)
+        resolved =
+          if context.equal?(UNSET_CONTEXT)
+            Context.current || Context.build(nil)
+          else
+            Context.build(context)
+          end
+        new(params:, context: resolved).call(action:)
       end
 
       def model(model_class = nil)
@@ -40,10 +50,20 @@ module Railsmith
       # Bounded-context key for this service (optional). When set, mismatches
       # against +context[:current_domain]+ emit warn-only instrumentation unless
       # the pair is listed in +Railsmith.configuration.cross_domain_allowlist+.
-      def service_domain(domain_key = nil)
+      def domain(domain_key = nil)
         return @service_domain if domain_key.nil?
 
         @service_domain = Context.normalize_current_domain(domain_key)
+      end
+
+      # @deprecated Use {.domain} instead.
+      def service_domain(domain_key = nil)
+        if domain_key.nil?
+          warn "[DEPRECATION] `service_domain` reader is deprecated. Use `domain` instead."
+        else
+          warn "[DEPRECATION] `service_domain :#{domain_key}` is deprecated. Use `domain :#{domain_key}` instead."
+        end
+        domain(domain_key)
       end
     end
 
@@ -51,7 +71,7 @@ module Railsmith
 
     def initialize(params:, context:)
       @params = deep_dup(params || {})
-      @context = deep_dup(context || {})
+      @context = context.is_a?(Context) ? context : Context.build(context)
     end
 
     def call(action:)

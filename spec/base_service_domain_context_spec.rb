@@ -151,18 +151,59 @@ RSpec.describe "Railsmith::BaseService domain context propagation" do
   end
 
   describe "context immutability" do
-    it "does not expose the original context object to mutation through the service" do
+    it "does not mutate the original context hash" do
       original_context = { current_domain: :billing, actor_id: 1 }
 
       service_class = Class.new(Railsmith::BaseService) do
         def probe
-          context[:current_domain] = :hacked
-          Railsmith::Result.success(value: {})
+          Railsmith::Result.success(value: { domain: current_domain })
         end
       end
 
       service_class.call(action: :probe, params: {}, context: original_context)
       expect(original_context[:current_domain]).to eq(:billing)
+    end
+
+    it "context inside the service is a frozen Context object" do
+      service_class = Class.new(Railsmith::BaseService) do
+        def probe
+          Railsmith::Result.success(value: { frozen: context.frozen?, is_context: context.is_a?(Railsmith::Context) })
+        end
+      end
+
+      result = service_class.call(action: :probe, params: {}, context: { current_domain: :billing })
+      expect(result.value[:frozen]).to be true
+      expect(result.value[:is_context]).to be true
+    end
+  end
+
+  describe ".domain DSL" do
+    it "sets the service domain via the new `domain` class method" do
+      service_class = Class.new(Railsmith::BaseService) do
+        domain :billing
+      end
+
+      expect(service_class.domain).to eq(:billing)
+    end
+
+    it "returns nil when no domain is declared" do
+      service_class = Class.new(Railsmith::BaseService)
+      expect(service_class.domain).to be_nil
+    end
+
+    it "accepts service_domain as a deprecated alias and emits a warning" do
+      service_class = Class.new(Railsmith::BaseService)
+
+      expect { service_class.service_domain(:billing) }.to output(/DEPRECATION.*service_domain/).to_stderr
+      expect(service_class.domain).to eq(:billing)
+    end
+
+    it "reading via service_domain emits a deprecation warning" do
+      service_class = Class.new(Railsmith::BaseService) do
+        domain :billing
+      end
+
+      expect { service_class.service_domain }.to output(/DEPRECATION.*service_domain/).to_stderr
     end
   end
 

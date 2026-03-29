@@ -33,12 +33,30 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - `Context#request_id` — auto-generated UUID (`SecureRandom.uuid`) assigned at construction when no `request_id:` is supplied.
   Passing an explicit `request_id:` value always takes precedence (e.g. forwarding an `X-Request-Id` header).
 
+- `Context.build(value)` factory on `Railsmith::Context` — coerces any context-like value into a `Context`:
+  - Already a `Context` → returned as-is.
+  - A hash with `:domain` or `:current_domain` → wrapped in `Context.new(**hash)` (all extra keys forwarded).
+  - `nil` or `{}` → builds a minimal `Context` with an auto-generated `request_id`.
+- `context:` argument to `BaseService.call` is now optional. Omitting it (or passing `nil`/`{}`) produces
+  a real `Context` with a `request_id`; no `ArgumentError` is raised.
+- `find` action on model-backed services — returns `Result.success(value: record)` or a `not_found` failure.
+- `list` action on model-backed services — returns `Result.success(value: model_class.all)` by default; meant to be overridden when filtering is required.
+- `Railsmith::Context.current` — returns the thread-local `Context` (or `nil` when none is set).
+- `Railsmith::Context.with(**kwargs, &block)` — sets a thread-local context for the duration of the block, then restores the previous value. Safe for concurrent use.
+- `domain` DSL method on `BaseService` subclasses — equivalent to `service_domain` (shorter, consistent with the `domain:` kwarg on `Context`).
+
+### Changed
+
+- `BaseService.call` context resolution order: explicit `context:` arg > thread-local `Context.current` > auto-built empty context.
+
 ### Deprecated
 
 - `Railsmith::DomainContext` — still works but emits a deprecation warning on every `.new` call.
   Will be removed in the next major release. Replace with `Railsmith::Context`.
 - `current_domain:` keyword on `Context.new` — use `domain:` instead.
   Emits a deprecation warning when used.
+- `service_domain` DSL method on `BaseService` subclasses — use `domain` instead.
+  Emits a deprecation warning when used. Will be removed in the next major release.
 
 ---
 

@@ -46,7 +46,7 @@ RSpec.describe Railsmith::DomainContext do
 
     it "treats nil meta the same as an empty hash" do
       ctx = described_class.new(meta: nil)
-      expect(ctx.meta).to eq({})
+      expect(ctx.meta.except(:request_id)).to eq({})
     end
   end
 
@@ -73,12 +73,13 @@ RSpec.describe Railsmith::DomainContext do
 
     it "includes current_domain: nil when domain is blank" do
       ctx = described_class.new
-      expect(ctx.to_h).to eq(current_domain: nil)
+      expect(ctx.to_h).to include(current_domain: nil)
+      expect(ctx.to_h).to have_key(:request_id)
     end
 
-    it "does not include meta keys when meta is empty" do
+    it "does not include extra meta keys when meta is empty" do
       ctx = described_class.new(current_domain: :identity)
-      expect(ctx.to_h.keys).to eq([:current_domain])
+      expect(ctx.to_h.keys).to match_array(%i[current_domain request_id])
     end
 
     it "does not let meta override current_domain" do

@@ -3,6 +3,45 @@
 require "spec_helper"
 
 RSpec.describe Railsmith::Context do
+  describe ".build" do
+    it "returns a Context unchanged" do
+      ctx = described_class.new(domain: :billing)
+      expect(described_class.build(ctx)).to be(ctx)
+    end
+
+    it "returns a new Context with auto request_id for nil" do
+      ctx = described_class.build(nil)
+      expect(ctx).to be_a(described_class)
+      expect(ctx.domain).to be_nil
+      expect(ctx.request_id).to match(/\A[0-9a-f\-]{36}\z/)
+    end
+
+    it "returns a new Context with auto request_id for empty hash" do
+      ctx = described_class.build({})
+      expect(ctx).to be_a(described_class)
+      expect(ctx.request_id).to match(/\A[0-9a-f\-]{36}\z/)
+    end
+
+    it "wraps a hash with :domain" do
+      ctx = described_class.build({ domain: :catalog, actor_id: 7 })
+      expect(ctx.domain).to eq(:catalog)
+      expect(ctx[:actor_id]).to eq(7)
+    end
+
+    it "remaps :current_domain to :domain without a deprecation warning" do
+      ctx = nil
+      expect { ctx = described_class.build({ current_domain: :billing, request_id: "r1" }) }.not_to output.to_stderr
+      expect(ctx.domain).to eq(:billing)
+      expect(ctx.request_id).to eq("r1")
+    end
+
+    it "preserves all extra keys from the hash" do
+      ctx = described_class.build({ domain: :payments, actor_id: 42, trace_id: "t1" })
+      expect(ctx[:actor_id]).to eq(42)
+      expect(ctx[:trace_id]).to eq("t1")
+    end
+  end
+
   describe ".normalize_current_domain" do
     it "returns nil for nil and blank strings" do
       expect(described_class.normalize_current_domain(nil)).to be_nil
@@ -152,6 +191,62 @@ RSpec.describe Railsmith::Context do
       result = service_class.call(action: :probe, params: {}, context: ctx.to_h)
       expect(result).to be_success
       expect(result.value).to eq({ domain: :catalog, request_id: "r1" })
+    end
+  end
+
+  describe ".current / .current=" do
+    around { |ex| described_class.current = nil; ex.run; described_class.current = nil }
+
+    it "returns nil when nothing has been set" do
+      expect(described_class.current).to be_nil
+    end
+
+    it "stores and retrieves a Context on the current thread" do
+      ctx = described_class.new(domain: :billing)
+      described_class.current = ctx
+      expect(described_class.current).to be(ctx)
+    end
+  end
+
+  describe ".with" do
+    around { |ex| described_class.current = nil; ex.run; described_class.current = nil }
+
+    it "sets the current context for the duration of the block" do
+      captured = nil
+      described_class.with(domain: :web, actor_id: 1) { captured = described_class.current }
+      expect(captured).to be_a(described_class)
+      expect(captured.domain).to eq(:web)
+      expect(captured[:actor_id]).to eq(1)
+    end
+
+    it "restores the previous context after the block" do
+      described_class.current = nil
+      described_class.with(domain: :web) {}
+      expect(described_class.current).to be_nil
+    end
+
+    it "restores the previous context even when the block raises" do
+      described_class.current = nil
+      expect { described_class.with(domain: :web) { raise "boom" } }.to raise_error("boom")
+      expect(described_class.current).to be_nil
+    end
+
+    it "supports nesting — inner block does not bleed into outer" do
+      outer_ctx = described_class.new(domain: :outer)
+      described_class.current = outer_ctx
+
+      inner_captured = nil
+      described_class.with(domain: :inner) { inner_captured = described_class.current }
+
+      expect(inner_captured.domain).to eq(:inner)
+      expect(described_class.current).to be(outer_ctx)
+    end
+
+    it "accepts an existing Context instance" do
+      ctx = described_class.new(domain: :billing, request_id: "fixed")
+      captured = nil
+      described_class.with(ctx) { captured = described_class.current }
+      expect(captured).to be(ctx)
     end
   end
 end

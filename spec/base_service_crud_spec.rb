@@ -91,6 +91,60 @@ RSpec.describe "Railsmith::BaseService CRUD defaults" do
     expect(result.error.to_h.fetch(:details)).to eq({ missing: ["id"] })
   end
 
+  it "finds a record by id" do
+    widget = Widget.create!(name: "Findme")
+
+    result = service_class.call(action: :find, params: { id: widget.id }, context: {})
+
+    expect(result).to be_success
+    expect(result.value).to eq(widget)
+  end
+
+  it "returns not_found when find id is missing" do
+    result = service_class.call(action: :find, params: {}, context: {})
+
+    expect(result).to be_failure
+    expect(result.code).to eq("validation_error")
+    expect(result.error.to_h.fetch(:details)).to eq({ missing: ["id"] })
+  end
+
+  it "returns not_found when find id does not exist" do
+    result = service_class.call(action: :find, params: { id: -1 }, context: {})
+
+    expect(result).to be_failure
+    expect(result.code).to eq("not_found")
+  end
+
+  it "lists all records" do
+    Widget.delete_all
+    Widget.create!(name: "Alpha")
+    Widget.create!(name: "Beta")
+
+    result = service_class.call(action: :list, params: {}, context: {})
+
+    expect(result).to be_success
+    expect(result.value.map(&:name)).to contain_exactly("Alpha", "Beta")
+  end
+
+  it "list can be overridden to filter results" do
+    Widget.delete_all
+    Widget.create!(name: "Active")
+    Widget.create!(name: "Other")
+
+    filtered_service = Class.new(Railsmith::BaseService) do
+      model Widget
+
+      def list
+        Railsmith::Result.success(value: Widget.where(name: params[:name]))
+      end
+    end
+
+    result = filtered_service.call(action: :list, params: { name: "Active" }, context: {})
+
+    expect(result).to be_success
+    expect(result.value.map(&:name)).to eq(["Active"])
+  end
+
   it "returns conflict failure when a unique constraint is violated" do
     allow_any_instance_of(Widget).to receive(:save).and_raise(ActiveRecord::RecordNotUnique)
 

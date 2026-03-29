@@ -43,7 +43,9 @@ RSpec.describe Railsmith::Generators::OperationGenerator do
         File.join(temp_dir, "app/domains/billing/operations/invoices/create.rb")
       )
       expect(content).to include("module Operations")
-      expect(content).to include("Billing::Operations::Invoices::Create")
+      expect(content).to include("module Billing")
+      expect(content).to include("module Invoices")
+      expect(content).to include("class Create")
     end
   end
 
