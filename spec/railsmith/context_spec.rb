@@ -13,13 +13,13 @@ RSpec.describe Railsmith::Context do
       ctx = described_class.build(nil)
       expect(ctx).to be_a(described_class)
       expect(ctx.domain).to be_nil
-      expect(ctx.request_id).to match(/\A[0-9a-f\-]{36}\z/)
+      expect(ctx.request_id).to match(/\A[0-9a-f-]{36}\z/)
     end
 
     it "returns a new Context with auto request_id for empty hash" do
       ctx = described_class.build({})
       expect(ctx).to be_a(described_class)
-      expect(ctx.request_id).to match(/\A[0-9a-f\-]{36}\z/)
+      expect(ctx.request_id).to match(/\A[0-9a-f-]{36}\z/)
     end
 
     it "wraps a hash with :domain" do
@@ -103,7 +103,7 @@ RSpec.describe Railsmith::Context do
   describe "#request_id" do
     it "is auto-generated as a UUID when not provided" do
       ctx = described_class.new
-      expect(ctx.request_id).to match(/\A[0-9a-f\-]{36}\z/)
+      expect(ctx.request_id).to match(/\A[0-9a-f-]{36}\z/)
     end
 
     it "is unique per instance" do
@@ -195,7 +195,11 @@ RSpec.describe Railsmith::Context do
   end
 
   describe ".current / .current=" do
-    around { |ex| described_class.current = nil; ex.run; described_class.current = nil }
+    around do |ex|
+      described_class.current = nil
+      ex.run
+      described_class.current = nil
+    end
 
     it "returns nil when nothing has been set" do
       expect(described_class.current).to be_nil
@@ -209,7 +213,11 @@ RSpec.describe Railsmith::Context do
   end
 
   describe ".with" do
-    around { |ex| described_class.current = nil; ex.run; described_class.current = nil }
+    around do |ex|
+      described_class.current = nil
+      ex.run
+      described_class.current = nil
+    end
 
     it "sets the current context for the duration of the block" do
       captured = nil
@@ -221,7 +229,7 @@ RSpec.describe Railsmith::Context do
 
     it "restores the previous context after the block" do
       described_class.current = nil
-      described_class.with(domain: :web) {}
+      described_class.with(domain: :web) { nil }
       expect(described_class.current).to be_nil
     end
 

@@ -36,14 +36,7 @@ module Railsmith
     #     UserService.call(action: :create, params: { ... })
     #   end
     def self.with(context = nil, **kwargs)
-      ctx = if context.is_a?(Context)
-               context
-             elsif !kwargs.empty?
-               new(**kwargs)
-             else
-               new
-             end
-
+      ctx = thread_context_from(context, **kwargs)
       previous = current
       self.current = ctx
       begin
@@ -52,6 +45,14 @@ module Railsmith
         self.current = previous
       end
     end
+
+    def self.thread_context_from(context, **kwargs)
+      return context if context.is_a?(Context)
+      return new(**kwargs) unless kwargs.empty?
+
+      new
+    end
+    private_class_method :thread_context_from
 
     # Coerces any context-like value into a +Context+ instance.
     #
@@ -63,18 +64,21 @@ module Railsmith
       case context
       when Context
         context
-      when nil
-        new
       when Hash
-        return new if context.empty?
-
-        kwargs = Railsmith.deep_dup(context)
-        kwargs[:domain] = kwargs.delete(:current_domain) if kwargs.key?(:current_domain) && !kwargs.key?(:domain)
-        new(**kwargs)
+        build_from_hash(context)
       else
         new
       end
     end
+
+    def self.build_from_hash(context)
+      return new if context.empty?
+
+      kwargs = Railsmith.deep_dup(context)
+      kwargs[:domain] = kwargs.delete(:current_domain) if kwargs.key?(:current_domain) && !kwargs.key?(:domain)
+      new(**kwargs)
+    end
+    private_class_method :build_from_hash
 
     # Normalizes a domain value to a Symbol (or nil for blank/nil input).
     def self.normalize_current_domain(value)
@@ -115,7 +119,7 @@ module Railsmith
     # Accesses extra keys by symbol.
     def [](key)
       sym = key.to_sym
-      return @domain if sym == :current_domain || sym == :domain
+      return @domain if %i[current_domain domain].include?(sym)
 
       @extras[sym]
     end

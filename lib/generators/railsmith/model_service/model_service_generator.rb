@@ -17,6 +17,7 @@ module Railsmith
     # Domain mode (--domain=Billing):
     # - Generates into `app/domains/<domain>/services/<model>_service.rb`
     # - Wraps class in `<Domain>::Services::<Model>Service`
+    # rubocop:disable Metrics/ClassLength -- generator with many class options and path helpers
     class ModelServiceGenerator < Rails::Generators::NamedBase
       source_root File.expand_path("templates", __dir__)
 
@@ -162,5 +163,6 @@ module Railsmith
         declared_actions.include?(action_name.to_s)
       end
     end
+    # rubocop:enable Metrics/ClassLength
   end
 end

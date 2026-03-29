@@ -11,6 +11,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Appraisal-style gemfiles for CI and local testing: `gemfiles/rails_7.gemfile` and `gemfiles/rails_8.gemfile` (with lockfiles), pinning `activerecord` / `railties` to Rails 7.x and 8.x respectively.
 - `--namespace` flag on `railsmith:model_service` and `railsmith:operation` generators.
   Wraps the generated class in the given modules (e.g. `--namespace=Billing::Services`).
   When a namespace is provided, `service_domain` is automatically set from its first segment.
@@ -48,6 +49,18 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ### Changed
 
 - `BaseService.call` context resolution order: explicit `context:` arg > thread-local `Context.current` > auto-built empty context.
+- **Ruby**: minimum supported version is now **>= 3.1.0** (was >= 3.2.0). RuboCop `TargetRubyVersion` is aligned to 3.1.
+- `Railsmith::Context` — refactored `.with` and `.build` helpers: `thread_context_from` and `build_from_hash` as `private_class_method`s; `#[]` uses `%i[current_domain domain]` for domain lookup (behavior unchanged).
+- Packaged gem file list: `gemfiles/`, `.ruby-version`, and `.tool-versions` are excluded from the gem tarball (development-only paths).
+
+### Development
+
+- GitHub Actions workflow renamed to **CI**; **lint** job runs RuboCop on Ruby 3.3; **test** matrix runs RSpec and the arch-check smoke task across Ruby **3.1**, **3.2**, and **3.3** with `BUNDLE_GEMFILE` set to each Rails gemfile (Ruby **3.1** is excluded with Rails 8 — same constraint as upstream Rails). `permissions: contents: read`, `fail-fast: false` on tests, `ruby/setup-ruby` `gemfile:` for matrix installs.
+- `railsmith:model_service` generator: file-level `Metrics/ClassLength` RuboCop disable/enable around `ModelServiceGenerator` only.
+
+### Fixed
+
+- Removed obsolete `Style/ArgumentsForwarding` RuboCop disable comments in bulk operation helpers (`bulk_actions`, `bulk_execution`) now that the targeted Ruby/RuboCop configuration no longer requires them.
 
 ### Deprecated
 

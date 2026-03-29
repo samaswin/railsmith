@@ -2,7 +2,7 @@
 
 Railsmith is a service-layer gem for Rails. It standardizes domain-oriented service boundaries with sensible defaults for CRUD operations, bulk operations, result handling, and cross-domain enforcement.
 
-**Requirements**: Ruby >= 3.2.0, Rails 7.0–8.x
+**Requirements**: Ruby >= 3.1.0, Rails 7.0–8.x
 
 ---
 
@@ -33,7 +33,7 @@ rails generate railsmith:model_service User
 Call it:
 
 ```ruby
-result = Operations::UserService.call(
+result = UserService.call(
   action: :create,
   params: { attributes: { name: "Alice", email: "alice@example.com" } },
   context: {}
@@ -79,9 +79,9 @@ result.error.to_h      # => { code: "not_found", message: "User not found", deta
 |---------|--------|
 | `rails g railsmith:install` | Initializer + service directories |
 | `rails g railsmith:domain Billing` | `app/domains/billing.rb` + subdirectories |
-| `rails g railsmith:model_service User` | `app/services/operations/user_service.rb` |
+| `rails g railsmith:model_service User` | `app/services/user_service.rb` |
 | `rails g railsmith:model_service Billing::Invoice --domain=Billing` | `app/domains/billing/services/invoice_service.rb` |
-| `rails g railsmith:operation Billing::Invoices::Create` | `app/domains/billing/operations/invoices/create.rb` |
+| `rails g railsmith:operation Billing::Invoices::Create` | `app/domains/billing/invoices/create.rb` |
 
 ---
 
@@ -234,6 +234,13 @@ See [Migration](MIGRATION.md#embedding-architecture-checks-from-ruby) for option
 bin/setup       # install dependencies
 bundle exec rake spec   # run tests
 bin/console     # interactive prompt
+```
+
+CI runs the suite against Rails 7 and Rails 8 using [`gemfiles/rails_7.gemfile`](gemfiles/rails_7.gemfile) and [`gemfiles/rails_8.gemfile`](gemfiles/rails_8.gemfile) (Ruby 3.1–3.3; Rails 8 is not paired with Ruby 3.1 in CI). To reproduce a matrix cell locally:
+
+```bash
+BUNDLE_GEMFILE=gemfiles/rails_7.gemfile bundle install
+BUNDLE_GEMFILE=gemfiles/rails_7.gemfile bundle exec rspec
 ```
 
 To install locally: `bundle exec rake install`.

@@ -2,6 +2,14 @@
 
 ## Upgrading from 1.0.0 to 1.1.0
 
+### Ruby >= 3.1 (non-breaking)
+
+Railsmith **1.0.0** declared `required_ruby_version >= 3.2.0`. **1.1.0** lowers the minimum to **>= 3.1.0** so apps on Ruby 3.1 can depend on the gem without changing service code.
+
+If you already run Ruby 3.2 or newer, no action is required.
+
+---
+
 ### `DomainContext` → `Context` (non-breaking, deprecation warning)
 
 
@@ -275,7 +283,7 @@ Railsmith 1.0.0 is the first stable release. If you were using the 0.x developme
 | Ruby | >= 3.2.0 | >= 3.2.0 |
 | Rails | 7.0–8.x | 7.0–8.x |
 
-No changes to minimum runtime requirements.
+No other changes to minimum runtime requirements at the 1.0.0 release. (Ruby **3.1** is supported starting in **1.1.0**; see the section above.)
 
 ---
 

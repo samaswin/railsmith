@@ -8,7 +8,6 @@ module Railsmith
       private
 
       # This project targets Ruby versions where anonymous block forwarding (`&`) may be unavailable.
-      # rubocop:disable Style/ArgumentsForwarding
       def apply_bulk_operation(model_klass, operation:, items:, transaction_mode:, &block)
         limit = bulk_limit
         return bulk_limit_exceeded_result(limit:, count: items.size) if items.size > limit
@@ -20,15 +19,12 @@ module Railsmith
           meta: bulk_meta(model_klass, operation:, transaction_mode:, limit:)
         )
       end
-      # rubocop:enable Style/ArgumentsForwarding
 
-      # rubocop:disable Style/ArgumentsForwarding
       def apply_bulk_results(model_klass, items, transaction_mode:, &block)
         return apply_bulk_all_or_nothing(model_klass, items, &block) if transaction_mode == :all_or_nothing
 
         apply_bulk_best_effort(model_klass, items, &block)
       end
-      # rubocop:enable Style/ArgumentsForwarding
 
       def apply_bulk_best_effort(model_klass, items, &block)
         bulk_map(items) do |item|

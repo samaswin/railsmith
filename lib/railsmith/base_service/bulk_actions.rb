@@ -40,7 +40,6 @@ module Railsmith
       private
 
       # This project targets Ruby versions where anonymous block forwarding (`&`) may be unavailable.
-      # rubocop:disable Style/ArgumentsForwarding
       def bulk_write_operation(model_klass, operation:, &block)
         apply_bulk_operation(
           model_klass,
@@ -50,7 +49,6 @@ module Railsmith
           &block
         )
       end
-      # rubocop:enable Style/ArgumentsForwarding
 
       def bulk_update_one(model_klass, item)
         id = item.is_a?(Hash) ? item[:id] : nil

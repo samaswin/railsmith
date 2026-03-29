@@ -53,7 +53,11 @@ RSpec.describe Railsmith::BaseService do
         end
       end
 
-      around { |ex| Railsmith::Context.current = nil; ex.run; Railsmith::Context.current = nil }
+      around do |ex|
+        Railsmith::Context.current = nil
+        ex.run
+        Railsmith::Context.current = nil
+      end
 
       it "uses the thread-local context when no context: arg is passed" do
         Railsmith::Context.with(domain: :web, request_id: "tl-1") do
@@ -65,7 +69,7 @@ RSpec.describe Railsmith::BaseService do
       it "falls back to an auto-built context when no thread-local is set" do
         result = probe_service.call(action: :probe, params: {})
         expect(result.value[:domain]).to be_nil
-        expect(result.value[:request_id]).to match(/\A[0-9a-f\-]{36}\z/)
+        expect(result.value[:request_id]).to match(/\A[0-9a-f-]{36}\z/)
       end
 
       it "gives explicit context: precedence over the thread-local context" do
