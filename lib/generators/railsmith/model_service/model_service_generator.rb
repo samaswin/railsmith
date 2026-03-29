@@ -17,7 +17,6 @@ module Railsmith
     # Domain mode (--domain=Billing):
     # - Generates into `app/domains/<domain>/services/<model>_service.rb`
     # - Wraps class in `<Domain>::Services::<Model>Service`
-    # rubocop:disable Metrics/ClassLength -- generator with many class options and path helpers
     class ModelServiceGenerator < Rails::Generators::NamedBase
       source_root File.expand_path("templates", __dir__)
 
@@ -61,29 +60,31 @@ module Railsmith
 
       private
 
+      def target_file = resolver.target_file
+      def enclosing_modules = resolver.enclosing_modules
+      def service_domain_name = resolver.service_domain_name
+      def service_class_name = "#{class_name}Service"
+      def class_indent = enclosing_modules.empty? ? "" : "  "
+      def member_indent = enclosing_modules.empty? ? "  " : "    "
+      def stub_action?(action_name) = resolver.declared_actions.include?(action_name.to_s)
+
+      def resolver
+        @resolver ||= Resolver.new(class_name, options)
+      end
+    end
+
+    # Computes target file path and enclosing module list for ModelServiceGenerator.
+    class Resolver
+      def initialize(class_name, options)
+        @class_name = class_name
+        @options = options
+      end
+
       def target_file
         return domain_target_file if domain_mode?
         return namespace_target_file if namespace_given?
 
-        File.join(options[:output_path], "#{file_path}_service.rb")
-      end
-
-      def domain_target_file
-        File.join(
-          options[:domains_path],
-          domain_file_path,
-          "services",
-          "#{model_file_path}_service.rb"
-        )
-      end
-
-      def namespace_target_file
-        simple_name = class_name.split("::").last.underscore
-        File.join(options[:output_path], namespace_file_path, "#{simple_name}_service.rb")
-      end
-
-      def service_class_name
-        "#{class_name}Service"
+        File.join(@options[:output_path], "#{flat_file_path}_service.rb")
       end
 
       def enclosing_modules
@@ -93,76 +94,47 @@ module Railsmith
         model_modules
       end
 
-      # Indentation for the `class` line — 2 spaces per enclosing module, capped at one level.
-      def class_indent
-        enclosing_modules.empty? ? "" : "  "
-      end
-
-      # Indentation for class body members.
-      def member_indent
-        enclosing_modules.empty? ? "  " : "    "
-      end
-
-      # Returns the first namespace segment underscored (e.g. "billing") to use as
-      # service_domain, or nil when no --namespace was given.
       def service_domain_name
         return nil unless namespace_given?
 
         namespace_modules.first&.underscore
       end
 
-      def namespace_modules
-        options[:namespace].to_s.strip.split("::")
+      def declared_actions
+        @options.fetch(:actions).map { |a| a.to_s.strip }.reject(&:empty?).uniq
       end
 
-      def namespace_given?
-        !options[:namespace].to_s.strip.empty?
+      private
+
+      def domain_target_file
+        File.join(@options[:domains_path], domain_file_path, "services", "#{model_file_path}_service.rb")
       end
 
-      def namespace_file_path
-        namespace_modules.map(&:underscore).join("/")
+      def namespace_target_file
+        simple_name = @class_name.split("::").last.underscore
+        File.join(@options[:output_path], namespace_file_path, "#{simple_name}_service.rb")
       end
 
-      def model_modules
-        class_name.split("::")[0...-1]
-      end
-
-      def domain_modules
-        options[:domain].to_s.strip.split("::")
-      end
+      def namespace_modules = @options[:namespace].to_s.strip.split("::")
+      def namespace_given? = !@options[:namespace].to_s.strip.empty?
+      def namespace_file_path = namespace_modules.map(&:underscore).join("/")
+      def model_modules = @class_name.split("::")[0...-1]
+      def domain_modules = @options[:domain].to_s.strip.split("::")
+      def domain_mode? = !@options[:domain].to_s.strip.empty?
+      def domain_file_path = domain_modules.map(&:underscore).join("/")
+      def flat_file_path = @class_name.split("::").map(&:underscore).join("/")
 
       def model_modules_without_domain
-        class_parts = class_name.split("::")
+        class_parts = @class_name.split("::")
         remaining = class_parts.drop(domain_modules.length)
         remaining[0...-1]
       end
 
-      def domain_file_path
-        domain_modules.map(&:underscore).join("/")
-      end
-
       def model_file_path
-        class_parts = class_name.split("::")
+        class_parts = @class_name.split("::")
         remaining = class_parts.drop(domain_modules.length)
         remaining.map(&:underscore).join("/")
       end
-
-      def domain_mode?
-        !options[:domain].to_s.strip.empty?
-      end
-
-      def declared_actions
-        options
-          .fetch(:actions)
-          .map { |a| a.to_s.strip }
-          .reject(&:empty?)
-          .uniq
-      end
-
-      def stub_action?(action_name)
-        declared_actions.include?(action_name.to_s)
-      end
     end
-    # rubocop:enable Metrics/ClassLength
   end
 end
