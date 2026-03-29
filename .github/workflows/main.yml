@@ -37,7 +37,7 @@ jobs:
             gemfile: gemfiles/rails_8.gemfile
     name: Ruby ${{ matrix.ruby }} (${{ matrix.gemfile }})
     env:
-      BUNDLE_GEMFILE: ${{ matrix.gemfile }}
+      BUNDLE_GEMFILE: ${{ github.workspace }}/${{ matrix.gemfile }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -47,7 +47,6 @@ jobs:
         with:
           ruby-version: ${{ matrix.ruby }}
           bundler-cache: true
-          gemfile: ${{ matrix.gemfile }}
       - name: Run test suite
         run: bundle exec rspec
       - name: Railsmith arch check (fixture smoke)
