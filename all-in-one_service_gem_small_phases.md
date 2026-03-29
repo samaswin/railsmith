@@ -158,7 +158,7 @@ This file breaks the roadmap into small implementation and testing phases so eac
 
 ---
 
-## Phase 8 - Cross-Domain Guardrails (Warn-Only)
+## Phase 8 - Cross-Domain Guardrails (Warn-Only) - Completed
 
 ### Implement
 - Add detection for cross-domain calls using `context[:current_domain]` tagging.

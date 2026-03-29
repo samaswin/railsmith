@@ -11,6 +11,8 @@ require_relative "railsmith/cross_domain_guard"
 require_relative "railsmith/cross_domain_warning_formatter"
 require_relative "railsmith/base_service"
 
+require_relative "railsmith/railtie" if defined?(Rails::Railtie)
+
 # Entry point for global gem configuration and loading.
 module Railsmith
   class Error < StandardError; end

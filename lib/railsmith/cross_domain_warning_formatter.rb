@@ -20,18 +20,19 @@ module Railsmith
 
     # Single-line JSON with sorted keys for grep and log aggregation.
     def as_json_line(payload)
-      ordered = CANONICAL_KEYS.each_with_object({}) do |key, accumulator|
+      JSON.generate(ordered_hash(payload))
+    end
+
+    def ordered_hash(payload)
+      ordered = CANONICAL_KEYS.each_with_object({}) do |key, acc|
         value = payload[key]
-        accumulator[key.to_s] = json_scalar(value) unless value.nil?
+        acc[key.to_s] = json_scalar(value) unless value.nil?
       end
       payload.each do |key, value|
         string_key = key.to_s
-        next if ordered.key?(string_key)
-        next if value.nil?
-
-        ordered[string_key] = json_scalar(value)
+        ordered[string_key] = json_scalar(value) unless ordered.key?(string_key) || value.nil?
       end
-      JSON.generate(ordered)
+      ordered
     end
 
     # Space-separated key=value for quick human scanning (values are JSON-encoded).

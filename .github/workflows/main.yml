@@ -32,3 +32,5 @@ jobs:
         run: bundle exec rspec
       - name: Run lint checks
         run: bundle exec rubocop
+      - name: Railsmith arch check (fixture smoke)
+        run: RAILSMITH_PATHS=spec/fixtures/controllers RAILSMITH_FORMAT=json bundle exec rake railsmith:arch_check
