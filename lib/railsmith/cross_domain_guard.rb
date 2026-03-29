@@ -37,7 +37,7 @@ module Railsmith
     end
 
     def self.domain_mismatch(instance)
-      context_domain = DomainContext.normalize_current_domain(instance.context[:current_domain])
+      context_domain = Context.normalize_current_domain(instance.context[:current_domain])
       service_domain = instance.class.service_domain
       return nil if context_domain.nil? || service_domain.nil?
       return nil if context_domain == service_domain
@@ -63,15 +63,15 @@ module Railsmith
     def self.hash_pair_matches?(entry, from_domain, to_domain)
       from_key = entry[:from] || entry["from"]
       to_key = entry[:to] || entry["to"]
-      DomainContext.normalize_current_domain(from_key) == from_domain &&
-        DomainContext.normalize_current_domain(to_key) == to_domain
+      Context.normalize_current_domain(from_key) == from_domain &&
+        Context.normalize_current_domain(to_key) == to_domain
     end
 
     def self.array_pair_matches?(entry, from_domain, to_domain)
       return false unless entry.size == 2
 
-      DomainContext.normalize_current_domain(entry[0]) == from_domain &&
-        DomainContext.normalize_current_domain(entry[1]) == to_domain
+      Context.normalize_current_domain(entry[0]) == from_domain &&
+        Context.normalize_current_domain(entry[1]) == to_domain
     end
 
     def self.build_payload(context_domain:, service_domain:, service:, action:, strict_mode:)

@@ -3,25 +3,24 @@
 <% declared_modules.each do |mod| -%>
 module <%= mod %>
 <% end -%>
-  class <%= operation_class_name %>
-    def self.call(params: {}, context: {})
-      new(params:, context:).call
-    end
+<%= class_indent %>class <%= operation_class_name %>
+<%= member_indent %>def self.call(params: {}, context: {})
+<%= member_indent %>  new(params:, context:).call
+<%= member_indent %>end
 
-    attr_reader :params, :context
+<%= member_indent %>attr_reader :params, :context
 
-    def initialize(params:, context:)
-      @params = Railsmith.deep_dup(params || {})
-      @context = Railsmith.deep_dup(context || {})
-    end
+<%= member_indent %>def initialize(params:, context:)
+<%= member_indent %>  @params = Railsmith.deep_dup(params || {})
+<%= member_indent %>  @context = Railsmith.deep_dup(context || {})
+<%= member_indent %>end
 
-    def call
-      current_domain = Railsmith::DomainContext.normalize_current_domain(context[:current_domain])
+<%= member_indent %>def call
+<%= member_indent %>  current_domain = Railsmith::Context.normalize_current_domain(context[:current_domain] || context[:domain])
 
-      Railsmith::Result.success(value: { current_domain: current_domain })
-    end
-  end
+<%= member_indent %>  Railsmith::Result.success(value: { current_domain: current_domain })
+<%= member_indent %>end
+<%= class_indent %>end
 <% (declared_modules.length - 1).downto(0) do -%>
 end
 <% end -%>
-

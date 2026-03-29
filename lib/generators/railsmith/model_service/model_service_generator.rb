@@ -7,25 +7,33 @@ module Railsmith
   module Generators
     # Scaffolds a service class for a given model constant.
     #
-    # Default mode:
-    # - Generates into `app/services/operations`
-    # - Namespace becomes `Operations::<ModelNamespace>::<Model>Service`
+    # Default mode (no flags):
+    # - Generates into `app/services/<model>_service.rb` with no module wrapper
     #
-    # Domain mode (when --domain is provided):
-    # - Generates into `app/domains/<domain>/services`
-    # - Namespace becomes `<Domain>::Services::<ModelNamespaceWithoutDomain>::<Model>Service`
+    # Namespace mode (--namespace=Billing::Services):
+    # - Generates into `app/services/billing/services/<model>_service.rb`
+    # - Wraps class in the given modules; auto-adds `service_domain` from first segment
+    #
+    # Domain mode (--domain=Billing):
+    # - Generates into `app/domains/<domain>/services/<model>_service.rb`
+    # - Wraps class in `<Domain>::Services::<Model>Service`
     class ModelServiceGenerator < Rails::Generators::NamedBase
       source_root File.expand_path("templates", __dir__)
 
       class_option :output_path,
                    type: :string,
-                   default: "app/services/operations",
+                   default: "app/services",
                    desc: "Base path where model services are generated"
 
       class_option :domains_path,
                    type: :string,
                    default: "app/domains",
                    desc: "Base path where domains live (used with --domain)"
+
+      class_option :namespace,
+                   type: :string,
+                   default: nil,
+                   desc: "Optional module namespace (e.g. Billing::Services)"
 
       class_option :domain,
                    type: :string,
@@ -53,8 +61,13 @@ module Railsmith
       private
 
       def target_file
-        return File.join(options[:output_path], "#{file_path}_service.rb") unless domain_mode?
+        return domain_target_file if domain_mode?
+        return namespace_target_file if namespace_given?
 
+        File.join(options[:output_path], "#{file_path}_service.rb")
+      end
+
+      def domain_target_file
         File.join(
           options[:domains_path],
           domain_file_path,
@@ -63,18 +76,50 @@ module Railsmith
         )
       end
 
+      def namespace_target_file
+        simple_name = class_name.split("::").last.underscore
+        File.join(options[:output_path], namespace_file_path, "#{simple_name}_service.rb")
+      end
+
       def service_class_name
         "#{class_name}Service"
       end
 
       def enclosing_modules
-        return default_modules unless domain_mode?
+        return domain_modules + ["Services"] + model_modules_without_domain if domain_mode?
+        return namespace_modules if namespace_given?
 
-        domain_modules + ["Services"] + model_modules_without_domain
+        model_modules
       end
 
-      def default_modules
-        ["Operations", *model_modules]
+      # Indentation for the `class` line — 2 spaces per enclosing module, capped at one level.
+      def class_indent
+        enclosing_modules.empty? ? "" : "  "
+      end
+
+      # Indentation for class body members.
+      def member_indent
+        enclosing_modules.empty? ? "  " : "    "
+      end
+
+      # Returns the first namespace segment underscored (e.g. "billing") to use as
+      # service_domain, or nil when no --namespace was given.
+      def service_domain_name
+        return nil unless namespace_given?
+
+        namespace_modules.first&.underscore
+      end
+
+      def namespace_modules
+        options[:namespace].to_s.strip.split("::")
+      end
+
+      def namespace_given?
+        !options[:namespace].to_s.strip.empty?
+      end
+
+      def namespace_file_path
+        namespace_modules.map(&:underscore).join("/")
       end
 
       def model_modules

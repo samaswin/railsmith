@@ -14,12 +14,12 @@ module Railsmith
     require_relative "base_service/crud_record_helpers"
     require_relative "base_service/crud_error_mapping"
     require_relative "base_service/crud_transactions"
-    require_relative "base_service/domain_context_propagation"
+    require_relative "base_service/context_propagation"
     include DupHelpers
     include Validation
     include CrudActions
     include BulkActions
-    prepend DomainContextPropagation
+    prepend ContextPropagation
 
     include CrudModelResolution
     include CrudRecordHelpers
@@ -43,7 +43,7 @@ module Railsmith
       def service_domain(domain_key = nil)
         return @service_domain if domain_key.nil?
 
-        @service_domain = DomainContext.normalize_current_domain(domain_key)
+        @service_domain = Context.normalize_current_domain(domain_key)
       end
     end
 

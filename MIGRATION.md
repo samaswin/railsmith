@@ -1,5 +1,152 @@
 # Migration Guide
 
+## Upgrading from 1.0.0 to 1.1.0
+
+### `DomainContext` → `Context` (non-breaking, deprecation warning)
+
+
+`Railsmith::DomainContext` is deprecated in favour of `Railsmith::Context`. The old class still works but prints a deprecation warning on every `.new` call. It will be removed in the next major release.
+
+#### New API at a glance
+
+```ruby
+# Before (1.0.0)
+Railsmith::DomainContext.new(
+  current_domain: :billing,
+  meta: { request_id: "req-abc", actor_id: current_user.id }
+)
+
+# After (1.1.0)
+Railsmith::Context.new(
+  domain: :billing,
+  actor_id: current_user.id   # top-level, no :meta wrapper
+)
+```
+
+Key differences:
+
+| | `DomainContext` (old) | `Context` (new) |
+|---|---|---|
+| Class | `Railsmith::DomainContext` | `Railsmith::Context` |
+| Domain kwarg | `current_domain:` | `domain:` |
+| Extra fields | nested under `meta:` | top-level kwargs |
+| `to_h` shape | `{ current_domain:, **meta }` | same (unchanged) |
+
+#### Migration steps
+
+1. **Find all `DomainContext` usages:**
+   ```
+   grep -r "DomainContext" app/ spec/
+   ```
+
+2. **Replace the class name and kwargs:**
+   ```ruby
+   # Before
+   ctx = Railsmith::DomainContext.new(current_domain: :billing, meta: { request_id: "r1", actor_id: 42 })
+
+   # After
+   ctx = Railsmith::Context.new(domain: :billing, request_id: "r1", actor_id: 42)
+   ```
+
+3. **If you read `ctx.meta` directly**, switch to individual readers:
+   ```ruby
+   ctx.meta[:actor_id]    # before
+   ctx[:actor_id]         # after
+   ```
+
+4. **No changes needed at the call site.** `to_h` output is identical — services reading `context[:current_domain]` continue to work without modification.
+
+#### Passing a context hash directly (unchanged)
+
+Services that receive a plain hash (e.g. `context: { current_domain: :billing, actor_id: 42 }`) are unaffected. The hash shape is preserved by `Context#to_h`.
+
+---
+
+### Generator defaults — no forced namespace (non-breaking)
+
+The `railsmith:model_service` and `railsmith:operation` generators no longer wrap generated classes in an `Operations::` module by default.
+
+#### model_service generator
+
+| | 1.0.0 default | 1.1.0 default |
+|---|---|---|
+| Command | `rails g railsmith:model_service User` | same |
+| Output file | `app/services/operations/user_service.rb` | `app/services/user_service.rb` |
+| Module wrapper | `module Operations` | none |
+| Call site | `Operations::UserService.call(...)` | `UserService.call(...)` |
+
+**Existing services are not broken** — any service already generated under `Operations::` continues to work without changes. The change only affects newly generated files.
+
+To generate with an explicit namespace (e.g. when you want domain grouping):
+
+```bash
+rails generate railsmith:model_service Invoice --namespace=Billing::Services
+# => app/services/billing/services/invoice_service.rb
+# => module Billing; module Services; class InvoiceService
+# => service_domain :billing  (auto-added from first segment)
+```
+
+To preserve the old `Operations::` default in a project that still wants it, pass `--namespace=Operations`:
+
+```bash
+rails generate railsmith:model_service User --namespace=Operations
+# => app/services/operations/user_service.rb  (same as before)
+```
+
+#### operation generator
+
+| | 1.0.0 default | 1.1.0 default |
+|---|---|---|
+| Command | `rails g railsmith:operation Billing::Invoices::Create` | same |
+| Output file | `app/domains/billing/operations/invoices/create.rb` | `app/domains/billing/invoices/create.rb` |
+| Module hierarchy | `Billing::Operations::Invoices::Create` | `Billing::Invoices::Create` |
+
+**Existing operations are not broken** — files already under `.../operations/...` are unaffected.
+
+To restore the old `Operations` interstitial module:
+
+```bash
+rails generate railsmith:operation Billing::Invoices::Create --namespace=Operations
+# => app/domains/billing/operations/invoices/create.rb  (same as before)
+```
+
+---
+
+### Auto-generated `request_id` (non-breaking)
+
+`Railsmith::Context` now assigns a UUID `request_id` automatically at construction when one is not provided.
+
+```ruby
+ctx = Railsmith::Context.new(domain: :billing, actor_id: 42)
+ctx.request_id  # => "550e8400-e29b-41d4-a716-446655440000"  (auto-generated)
+ctx.to_h        # => { current_domain: :billing, actor_id: 42, request_id: "550e8400-..." }
+```
+
+To forward an existing request ID (e.g. from an incoming HTTP header), pass it explicitly — it is never overwritten:
+
+```ruby
+ctx = Railsmith::Context.new(domain: :web, request_id: request.headers["X-Request-Id"])
+ctx.request_id  # => whatever the header contained
+```
+
+**No migration required.** All existing code that already passes `request_id:` continues to work unchanged. Code that omitted it now gets a UUID instead of `nil` in `to_h` — this is the intended behaviour.
+
+If you have specs that assert `Context#to_h` equals an exact hash without a `request_id` key, update them to use `include(...)` or pass an explicit `request_id:` to fix the value:
+
+```ruby
+# Before (will fail — to_h now always includes request_id)
+expect(ctx.to_h).to eq(current_domain: :billing, actor_id: 42)
+
+# After — option A: assert on the keys you care about
+expect(ctx.to_h).to include(current_domain: :billing, actor_id: 42)
+
+# After — option B: fix the request_id to make equality deterministic
+ctx = Railsmith::Context.new(domain: :billing, actor_id: 42, request_id: "r1")
+expect(ctx.to_h).to eq(current_domain: :billing, actor_id: 42, request_id: "r1")
+```
+
+---
+
 ## Upgrading from 0.x (pre-release) to 1.0.0
 
 Railsmith 1.0.0 is the first stable release. If you were using the 0.x development version, the changes below are required before upgrading.
@@ -78,11 +225,11 @@ The `on_cross_domain_violation` config callback still fires and is the recommend
 
 Domain-scoped services are now always generated under `app/domains/<domain>/services/`. If you used the generator during 0.x development and accepted a different default path, move the files and update `require` paths accordingly.
 
-| Generator | Output path (1.0.0) |
-|-----------|---------------------|
-| `railsmith:model_service User` | `app/services/operations/user_service.rb` |
-| `railsmith:model_service Billing::Invoice --domain=Billing` | `app/domains/billing/services/invoice_service.rb` |
-| `railsmith:operation Billing::Invoices::Create` | `app/domains/billing/operations/invoices/create.rb` |
+| Generator | Output path (1.0.0) | Output path (1.1.0) |
+|-----------|---------------------|---------------------|
+| `railsmith:model_service User` | `app/services/operations/user_service.rb` | `app/services/user_service.rb` |
+| `railsmith:model_service Billing::Invoice --domain=Billing` | `app/domains/billing/services/invoice_service.rb` | `app/domains/billing/services/invoice_service.rb` |
+| `railsmith:operation Billing::Invoices::Create` | `app/domains/billing/operations/invoices/create.rb` | `app/domains/billing/invoices/create.rb` |
 
 ---
 

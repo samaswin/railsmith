@@ -7,6 +7,41 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- `--namespace` flag on `railsmith:model_service` and `railsmith:operation` generators.
+  Wraps the generated class in the given modules (e.g. `--namespace=Billing::Services`).
+  When a namespace is provided, `service_domain` is automatically set from its first segment.
+  Generators that previously required `--namespace=Operations` to match the old default can now pass that flag explicitly.
+
+### Changed
+
+- `railsmith:model_service MODEL` — default output is now `app/services/<model>_service.rb` with **no module wrapper**.
+  Previously generated `app/services/operations/<model>_service.rb` inside `module Operations`.
+  Existing generated services are unaffected; the old namespace continues to work.
+- `railsmith:operation NAME` — default module hierarchy is now `<Domain>::<Operation>` with **no interstitial `Operations` module**.
+  Previously generated `<Domain>::Operations::<Operation>` and placed files under `.../operations/...`.
+  Existing generated operations are unaffected; pass `--namespace=Operations` to restore the old structure.
+
+- `Railsmith::Context` — replaces `Railsmith::DomainContext` as the canonical context value object.
+  Accepts `domain:` (preferred) and arbitrary top-level keyword args (`actor_id:`, `request_id:`, etc.) without a nested `:meta` hash.
+  `#[]` accessor, `#blank_domain?`, `#to_h` (backward-compatible shape: `{ current_domain: ..., **extras }`).
+- `Railsmith::BaseService::ContextPropagation` — renamed internal module (was `DomainContextPropagation`).
+  Reads both `:current_domain` and `:domain` context keys for compatibility.
+- `Context#request_id` — auto-generated UUID (`SecureRandom.uuid`) assigned at construction when no `request_id:` is supplied.
+  Passing an explicit `request_id:` value always takes precedence (e.g. forwarding an `X-Request-Id` header).
+
+### Deprecated
+
+- `Railsmith::DomainContext` — still works but emits a deprecation warning on every `.new` call.
+  Will be removed in the next major release. Replace with `Railsmith::Context`.
+- `current_domain:` keyword on `Context.new` — use `domain:` instead.
+  Emits a deprecation warning when used.
+
+---
+
 ## [1.0.0] — 2026-03-29
 
 First stable release. Public DSL and result contract are now frozen.

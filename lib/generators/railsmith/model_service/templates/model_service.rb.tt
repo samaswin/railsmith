@@ -3,26 +3,30 @@
 <% enclosing_modules.each do |mod| -%>
 module <%= mod %>
 <% end -%>
-  class <%= service_class_name.split("::").last %> < Railsmith::BaseService
-    model(<%= class_name %>)
-
+<%= class_indent %>class <%= service_class_name.split("::").last %> < Railsmith::BaseService
+<%= member_indent %>model(<%= class_name %>)
+<% if service_domain_name -%>
+<%= member_indent %>service_domain :<%= service_domain_name %>
+<% end -%>
 <% if stub_action?("create") -%>
-    def create
-      super
-    end
+
+<%= member_indent %>def create
+<%= member_indent %>  super
+<%= member_indent %>end
 <% end -%>
 <% if stub_action?("update") -%>
-    def update
-      super
-    end
+
+<%= member_indent %>def update
+<%= member_indent %>  super
+<%= member_indent %>end
 <% end -%>
 <% if stub_action?("destroy") -%>
-    def destroy
-      super
-    end
+
+<%= member_indent %>def destroy
+<%= member_indent %>  super
+<%= member_indent %>end
 <% end -%>
-  end
+<%= class_indent %>end
 <% (enclosing_modules.length - 1).downto(0) do -%>
 end
 <% end -%>
-
