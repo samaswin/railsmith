@@ -21,7 +21,7 @@ gem "sqlite3", ">= 2.1"
 # These pins are not needed on 3.2+ but don't hurt — they allow any version on newer Rubies.
 if RUBY_VERSION < "3.2"
   gem "connection_pool", "< 3"
-  gem "nokogiri", "< 1.19"
   gem "erb", "< 5"
+  gem "nokogiri", "< 1.19"
   gem "zeitwerk", "< 2.7"
 end
