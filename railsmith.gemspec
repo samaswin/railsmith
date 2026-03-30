@@ -39,6 +39,7 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   spec.add_dependency "railties", ">= 7.0", "< 9.0"
+  spec.add_dependency "activerecord", ">= 7.0", "< 9.0"
 
   # For more information and examples about making a new gem, check out our
   # guide at: https://bundler.io/guides/creating_gem.html

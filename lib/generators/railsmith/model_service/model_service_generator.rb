@@ -12,7 +12,7 @@ module Railsmith
     #
     # Namespace mode (--namespace=Billing::Services):
     # - Generates into `app/services/billing/services/<model>_service.rb`
-    # - Wraps class in the given modules; auto-adds `service_domain` from first segment
+    # - Wraps class in the given modules; auto-adds `domain` from first segment
     #
     # Domain mode (--domain=Billing):
     # - Generates into `app/domains/<domain>/services/<model>_service.rb`
@@ -127,12 +127,14 @@ module Railsmith
       def model_modules_without_domain
         class_parts = @class_name.split("::")
         remaining = class_parts.drop(domain_modules.length)
+        remaining = class_parts if remaining.empty?
         remaining[0...-1]
       end
 
       def model_file_path
         class_parts = @class_name.split("::")
         remaining = class_parts.drop(domain_modules.length)
+        remaining = class_parts if remaining.empty?
         remaining.map(&:underscore).join("/")
       end
     end

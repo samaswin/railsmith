@@ -95,12 +95,12 @@ RSpec.describe Railsmith::Generators::OperationGenerator do
 
       result = Billing::Invoices::Create.call(
         params: { invoice_id: 1 },
-        context: { current_domain: "billing" }
+        context: { domain: :billing }
       )
 
       expect(result).to be_a(Railsmith::Result)
       expect(result).to be_success
-      expect(result.value).to eq({ current_domain: :billing })
+      expect(result.value).to eq({})
     ensure
       Object.send(:remove_const, :Billing) if Object.const_defined?(:Billing)
     end

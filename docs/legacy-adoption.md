@@ -61,7 +61,7 @@ Pick the simplest model from your backlog (few validations, no callbacks). Gener
 rails generate railsmith:model_service Post
 ```
 
-Open `app/services/operations/post_service.rb`. For now, leave it as generated — the default CRUD actions are enough for the first replacement.
+Open `app/services/post_service.rb` (or `app/services/operations/post_service.rb` if you passed `--namespace=Operations`). For now, leave it as generated — the default CRUD actions are enough for the first replacement.
 
 Find the controller that creates posts. Replace the inline model call:
 
@@ -125,20 +125,18 @@ end
 New service action:
 
 ```ruby
-# app/services/operations/user_service.rb
-module Operations
-  class UserService < Railsmith::BaseService
-    model(User)
+# app/services/user_service.rb
+class UserService < Railsmith::BaseService
+  model(User)
 
-    def upgrade
-      id = params[:id]
-      user = User.find_by(id: id)
-      return Result.failure(error: Errors.not_found(details: { id: id })) unless user
+  def upgrade
+    id = params[:id]
+    user = User.find_by(id: id)
+    return Result.failure(error: Errors.not_found(details: { id: id })) unless user
 
-      user.update!(plan: "paid", upgraded_at: Time.current)
-      BillingMailer.upgraded(user).deliver_later
-      Result.success(value: user)
-    end
+    user.update!(plan: "paid", upgraded_at: Time.current)
+    BillingMailer.upgraded(user).deliver_later
+    Result.success(value: user)
   end
 end
 ```
@@ -167,7 +165,7 @@ rails generate railsmith:model_service Billing::Invoice --domain=Billing
 rails generate railsmith:model_service Billing::Payment --domain=Billing
 ```
 
-Move the service files from `app/services/operations/` to `app/domains/billing/services/` and add `domain`:
+Move the service files from `app/services/` (or `app/services/operations/` if you used the old default) into `app/domains/billing/services/` and add `domain`:
 
 ```ruby
 module Billing
@@ -270,7 +268,7 @@ return Result.failure(error: Errors.validation_error(
 ```
 
 **Forgetting to forward `context:`.**
-When a service calls another service, always pass `context: context` so domain tracking propagates.
+When a service calls another service, pass `context: context` unless you rely on thread-local `Railsmith::Context.with` at the controller edge — then nested calls inherit the same context automatically.
 
 **Wrapping service calls in rescue.**
 Don't. Services return `Result.failure` for all expected error conditions. Rescuing exceptions at the caller layer bypasses error mapping and loses structure.

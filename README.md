@@ -35,8 +35,7 @@ Call it:
 ```ruby
 result = UserService.call(
   action: :create,
-  params: { attributes: { name: "Alice", email: "alice@example.com" } },
-  context: {}
+  params: { attributes: { name: "Alice", email: "alice@example.com" } }
 )
 
 if result.success?
@@ -87,23 +86,21 @@ result.error.to_h      # => { code: "not_found", message: "User not found", deta
 
 ## CRUD Actions
 
-Services that declare a `model` inherit `create`, `update`, and `destroy` with automatic exception mapping:
+Services that declare a `model` inherit `create`, `update`, `destroy`, `find`, and `list` with automatic exception mapping:
 
 ```ruby
-module Operations
-  class UserService < Railsmith::BaseService
-    model(User)
-  end
+class UserService < Railsmith::BaseService
+  model(User)
 end
 
-# create
-Operations::UserService.call(action: :create, params: { attributes: { email: "a@b.com" } }, context: {})
+# create (context: is optional from 1.1 onward)
+UserService.call(action: :create, params: { attributes: { email: "a@b.com" } })
 
 # update
-Operations::UserService.call(action: :update, params: { id: 1, attributes: { email: "new@b.com" } }, context: {})
+UserService.call(action: :update, params: { id: 1, attributes: { email: "new@b.com" } })
 
 # destroy
-Operations::UserService.call(action: :destroy, params: { id: 1 }, context: {})
+UserService.call(action: :destroy, params: { id: 1 })
 ```
 
 Common ActiveRecord exceptions (`RecordNotFound`, `RecordInvalid`, `RecordNotUnique`) are caught and converted to structured failure results automatically.
@@ -114,27 +111,24 @@ Common ActiveRecord exceptions (`RecordNotFound`, `RecordInvalid`, `RecordNotUni
 
 ```ruby
 # bulk_create
-Operations::UserService.call(
+UserService.call(
   action: :bulk_create,
   params: {
     items: [{ name: "Alice", email: "a@b.com" }, { name: "Bob", email: "b@b.com" }],
     transaction_mode: :best_effort  # or :all_or_nothing
-  },
-  context: {}
+  }
 )
 
 # bulk_update
-Operations::UserService.call(
+UserService.call(
   action: :bulk_update,
-  params: { items: [{ id: 1, attributes: { name: "Alice Smith" } }] },
-  context: {}
+  params: { items: [{ id: 1, attributes: { name: "Alice Smith" } }] }
 )
 
 # bulk_destroy
-Operations::UserService.call(
+UserService.call(
   action: :bulk_destroy,
-  params: { items: [1, 2, 3] },
-  context: {}
+  params: { items: [1, 2, 3] }
 )
 ```
 
@@ -156,24 +150,21 @@ module Billing
   module Services
     class InvoiceService < Railsmith::BaseService
       model(Billing::Invoice)
-      service_domain :billing
+      domain :billing
     end
   end
 end
 ```
 
-Pass context on every call:
+Pass context when you need domain or tracing data (`context:` is optional; omit it to use thread-local `Context.current` or an auto-built context):
 
 ```ruby
-ctx = Railsmith::DomainContext.new(
-  current_domain: :billing,
-  meta: { request_id: "req-abc" }
-).to_h
+ctx = Railsmith::Context.new(domain: :billing, request_id: "req-abc")
 
 Billing::Services::InvoiceService.call(action: :create, params: { ... }, context: ctx)
 ```
 
-When `current_domain` in the context differs from a service's declared `service_domain`, Railsmith emits a `cross_domain.warning.railsmith` instrumentation event.
+When the context domain differs from a service's declared `domain`, Railsmith emits a `cross_domain.warning.railsmith` instrumentation event.
 
 Configure enforcement in `config/initializers/railsmith.rb`:
 
@@ -225,6 +216,8 @@ See [Migration](MIGRATION.md#embedding-architecture-checks-from-ruby) for option
 - [Quickstart](docs/quickstart.md) — install, generate, first call
 - [Cookbook](docs/cookbook.md) — CRUD, bulk, domain context, error mapping, observability
 - [Legacy Adoption Guide](docs/legacy-adoption.md) — incremental migration strategy
+- [Migration](MIGRATION.md) — upgrading from 1.0.x to 1.1.x (and earlier releases)
+- [Changelog](CHANGELOG.md)
 
 ---
 
@@ -244,6 +237,10 @@ BUNDLE_GEMFILE=gemfiles/rails_7.gemfile bundle exec rspec
 ```
 
 To install locally: `bundle exec rake install`.
+
+### Releasing
+
+With `lib/railsmith/version.rb` and `CHANGELOG.md` updated and committed, run `bundle exec rake release` to tag `v` + version, build the gem, and push to RubyGems (requires `gem push` credentials and a clean git state). To publish manually: `gem build railsmith.gemspec` then `gem push railsmith-X.Y.Z.gem`.
 
 ---
 

@@ -443,14 +443,12 @@ module Billing
       attr_reader :params, :context
 
       def initialize(params:, context:)
-        @params  = Railsmith.deep_dup(params  || {})
-        @context = Railsmith.deep_dup(context || {})
+        @params = Railsmith.deep_dup(params || {})
+        @context = Railsmith::Context.build(context)
       end
 
       def call
-        current_domain = Railsmith::Context.normalize_current_domain(context[:current_domain])
-        # Your logic here
-        Railsmith::Result.success(value: { current_domain: current_domain })
+        Railsmith::Result.success(value: {})
       end
     end
   end

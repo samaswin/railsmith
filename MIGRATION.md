@@ -91,7 +91,7 @@ To generate with an explicit namespace (e.g. when you want domain grouping):
 rails generate railsmith:model_service Invoice --namespace=Billing::Services
 # => app/services/billing/services/invoice_service.rb
 # => module Billing; module Services; class InvoiceService
-# => service_domain :billing  (auto-added from first segment)
+# => domain :billing  (auto-added from first segment)
 ```
 
 To preserve the old `Operations::` default in a project that still wants it, pass `--namespace=Operations`:

@@ -9,67 +9,55 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+---
+
+## [1.1.0] — 2026-03-30
+
 ### Added
 
 - Appraisal-style gemfiles for CI and local testing: `gemfiles/rails_7.gemfile` and `gemfiles/rails_8.gemfile` (with lockfiles), pinning `activerecord` / `railties` to Rails 7.x and 8.x respectively.
 - `--namespace` flag on `railsmith:model_service` and `railsmith:operation` generators.
   Wraps the generated class in the given modules (e.g. `--namespace=Billing::Services`).
-  When a namespace is provided, `service_domain` is automatically set from its first segment.
-  Generators that previously required `--namespace=Operations` to match the old default can now pass that flag explicitly.
-
-### Changed
-
-- `railsmith:model_service MODEL` — default output is now `app/services/<model>_service.rb` with **no module wrapper**.
-  Previously generated `app/services/operations/<model>_service.rb` inside `module Operations`.
-  Existing generated services are unaffected; the old namespace continues to work.
-- `railsmith:operation NAME` — default module hierarchy is now `<Domain>::<Operation>` with **no interstitial `Operations` module**.
-  Previously generated `<Domain>::Operations::<Operation>` and placed files under `.../operations/...`.
-  Existing generated operations are unaffected; pass `--namespace=Operations` to restore the old structure.
-
-- `Railsmith::Context` — replaces `Railsmith::DomainContext` as the canonical context value object.
+  When a namespace is provided on `model_service`, `domain` is automatically set from its first segment.
+  Pass `--namespace=Operations` explicitly to match the pre-1.1 default layout.
+- `Railsmith::Context` — canonical context value object (replaces `Railsmith::DomainContext` for new code).
   Accepts `domain:` (preferred) and arbitrary top-level keyword args (`actor_id:`, `request_id:`, etc.) without a nested `:meta` hash.
   `#[]` accessor, `#blank_domain?`, `#to_h` (backward-compatible shape: `{ current_domain: ..., **extras }`).
-- `Railsmith::BaseService::ContextPropagation` — renamed internal module (was `DomainContextPropagation`).
-  Reads both `:current_domain` and `:domain` context keys for compatibility.
-- `Context#request_id` — auto-generated UUID (`SecureRandom.uuid`) assigned at construction when no `request_id:` is supplied.
-  Passing an explicit `request_id:` value always takes precedence (e.g. forwarding an `X-Request-Id` header).
-
-- `Context.build(value)` factory on `Railsmith::Context` — coerces any context-like value into a `Context`:
-  - Already a `Context` → returned as-is.
-  - A hash with `:domain` or `:current_domain` → wrapped in `Context.new(**hash)` (all extra keys forwarded).
-  - `nil` or `{}` → builds a minimal `Context` with an auto-generated `request_id`.
-- `context:` argument to `BaseService.call` is now optional. Omitting it (or passing `nil`/`{}`) produces
-  a real `Context` with a `request_id`; no `ArgumentError` is raised.
-- `find` action on model-backed services — returns `Result.success(value: record)` or a `not_found` failure.
-- `list` action on model-backed services — returns `Result.success(value: model_class.all)` by default; meant to be overridden when filtering is required.
-- `Railsmith::Context.current` — returns the thread-local `Context` (or `nil` when none is set).
-- `Railsmith::Context.with(**kwargs, &block)` — sets a thread-local context for the duration of the block, then restores the previous value. Safe for concurrent use.
-- `domain` DSL method on `BaseService` subclasses — equivalent to `service_domain` (shorter, consistent with the `domain:` kwarg on `Context`).
+- `Context#request_id` — auto-generated UUID (`SecureRandom.uuid`) when no `request_id:` is supplied; explicit values always win (e.g. `X-Request-Id`).
+- `Context.build(value)` — coerces context-like values into a `Context` (`Context` as-is, hash with `:domain` / `:current_domain`, or `nil`/`{}` for a minimal context with auto `request_id`).
+- `Railsmith::Context.current` and `Railsmith::Context.with(**kwargs, &block)` — thread-local context for the request scope; nested blocks restore the previous value.
+- `domain` DSL on `BaseService` subclasses — preferred alias for `service_domain` (aligned with `Context`’s `domain:` kwarg).
+- `find` and `list` actions on model-backed services — `find` returns `Result.success(value: record)` or `not_found`; `list` defaults to `model_class.all` (override for filtering).
 
 ### Changed
 
-- `BaseService.call` context resolution order: explicit `context:` arg > thread-local `Context.current` > auto-built empty context.
-- **Ruby**: minimum supported version is now **>= 3.1.0** (was >= 3.2.0). RuboCop `TargetRubyVersion` is aligned to 3.1.
-- `Railsmith::Context` — refactored `.with` and `.build` helpers: `thread_context_from` and `build_from_hash` as `private_class_method`s; `#[]` uses `%i[current_domain domain]` for domain lookup (behavior unchanged).
-- Packaged gem file list: `gemfiles/`, `.ruby-version`, and `.tool-versions` are excluded from the gem tarball (development-only paths).
-
-### Development
-
-- GitHub Actions workflow renamed to **CI**; **lint** job runs RuboCop on Ruby 3.3; **test** matrix runs RSpec and the arch-check smoke task across Ruby **3.1**, **3.2**, and **3.3** with `BUNDLE_GEMFILE` set to each Rails gemfile (Ruby **3.1** is excluded with Rails 8 — same constraint as upstream Rails). `permissions: contents: read`, `fail-fast: false` on tests, `ruby/setup-ruby` `gemfile:` for matrix installs.
-- `railsmith:model_service` generator: file-level `Metrics/ClassLength` RuboCop disable/enable around `ModelServiceGenerator` only.
-
-### Fixed
-
-- Removed obsolete `Style/ArgumentsForwarding` RuboCop disable comments in bulk operation helpers (`bulk_actions`, `bulk_execution`) now that the targeted Ruby/RuboCop configuration no longer requires them.
+- `railsmith:model_service MODEL` — default output is `app/services/<model>_service.rb` with **no module wrapper** (was `app/services/operations/<model>_service.rb` in `module Operations`). Existing code is unaffected.
+- `railsmith:operation NAME` — default hierarchy is `<Domain>::…::<Operation>` without an interstitial `Operations` module (was `.../operations/...` on disk and in module nesting). Use `--namespace=Operations` for the old layout.
+- `Railsmith::BaseService::ContextPropagation` — renamed from `DomainContextPropagation`; reads both `:current_domain` and `:domain` for compatibility.
+- `context:` on `BaseService.call` is **optional**; omitting it, or passing `nil`/`{}`, yields a real `Context` with an auto `request_id` (no `ArgumentError`).
+- `BaseService.call` context resolution: explicit `context:` > thread-local `Context.current` > auto-built empty context.
+- **Ruby**: minimum supported version is **>= 3.1.0** (was >= 3.2.0). RuboCop `TargetRubyVersion` is aligned to 3.1.
+- `Railsmith::Context` implementation: `.with` / `.build` use `thread_context_from` and `build_from_hash` as `private_class_method`s; `#[]` uses `%i[current_domain domain]` for domain lookup (behavior unchanged).
+- Packaged gem file list: `gemfiles/`, `.ruby-version`, and `.tool-versions` excluded from the gem tarball.
 
 ### Deprecated
 
-- `Railsmith::DomainContext` — still works but emits a deprecation warning on every `.new` call.
-  Will be removed in the next major release. Replace with `Railsmith::Context`.
-- `current_domain:` keyword on `Context.new` — use `domain:` instead.
-  Emits a deprecation warning when used.
-- `service_domain` DSL method on `BaseService` subclasses — use `domain` instead.
-  Emits a deprecation warning when used. Will be removed in the next major release.
+- `Railsmith::DomainContext` — deprecation warning on `.new`; removed in a future major release. Use `Railsmith::Context`.
+- `current_domain:` on `Context.new` — use `domain:` (warning when used).
+- `service_domain` on `BaseService` — use `domain` (warning when used); removed in a future major release.
+
+### Fixed
+
+- Removed obsolete `Style/ArgumentsForwarding` RuboCop disables in bulk helpers (`bulk_actions`, `bulk_execution`).
+- `activerecord` is an explicit runtime dependency (`>= 7.0, < 9.0`); avoids opaque `NoMethodError` when CRUD/bulk run outside a full Rails load.
+- Root `Gemfile` pins `connection_pool`, `nokogiri`, `erb`, and `zeitwerk` under `RUBY_VERSION < "3.2"`, matching `gemfiles/rails_7.gemfile`, so Ruby 3.1 resolves without forcing `BUNDLE_GEMFILE`.
+- `railsmith:operation` — `initialize` uses `Railsmith::Context.build(context)` instead of `deep_dup` on context; frozen `Context` instances work; generated stub uses `context[:domain]` only.
+- `railsmith:model_service` — domain mode no longer emits `_service.rb` when the model name omits the domain prefix; generator comments reference `domain`, not `service_domain`.
+
+### Development
+
+- GitHub Actions **CI**: lint (RuboCop, Ruby 3.3); test matrix Ruby 3.1–3.3 × Rails 7/8 gemfiles (Ruby 3.1 excluded with Rails 8). `permissions: contents: read`, `fail-fast: false`, `ruby/setup-ruby` `gemfile:` for installs.
+- `railsmith:model_service` generator: file-level `Metrics/ClassLength` RuboCop disable/enable around `ModelServiceGenerator` only.
 
 ---
 
@@ -128,3 +116,7 @@ First stable release. Public DSL and result contract are now frozen.
 ## [0.1.0] — pre-release
 
 Internal bootstrap release. Gem skeleton, CI baseline, and initial service scaffolding. Not intended for production use.
+
+[Unreleased]: https://github.com/samaswin/railsmith/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/samaswin/railsmith/compare/v1.0.0...v1.1.0
+[1.0.0]: https://github.com/samaswin/railsmith/releases/tag/v1.0.0
