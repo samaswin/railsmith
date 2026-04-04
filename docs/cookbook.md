@@ -241,11 +241,11 @@ result = UserService.call(
 
 | Mode | Behavior |
 |------|----------|
-| `:best_effort` (default) | Each item in its own transaction. Partial success is persisted. |
-| `:all_or_nothing` | All items in one transaction. Any failure rolls back the entire batch. |
+| `:all_or_nothing` (default) | All items in one transaction. Any failure rolls back the entire batch. |
+| `:best_effort` | Each item in its own transaction. Partial success is persisted. |
 
 ```ruby
-# All-or-nothing import
+# Default is :all_or_nothing; set transaction_mode: :best_effort for per-row commits
 result = UserService.call(
   action: :bulk_create,
   params: {
@@ -273,7 +273,7 @@ end
 result.value
 # {
 #   operation:        "bulk_create",
-#   transaction_mode: "best_effort",
+#   transaction_mode: "all_or_nothing",
 #   items: [
 #     { index: 0, input: {...}, success: true,  value: <User>, error: nil    },
 #     { index: 1, input: {...}, success: false, value: nil,    error: {...}  }
@@ -287,7 +287,7 @@ result.value
 # }
 
 result.meta
-# { model: "User", operation: "bulk_create", transaction_mode: "best_effort", limit: 1000 }
+# { model: "User", operation: "bulk_create", transaction_mode: "all_or_nothing", limit: 1000 }
 ```
 
 ---
@@ -580,6 +580,25 @@ end
 
 `validate` returns `Result.failure` with a `validation_error` if any key is missing, or `Result.success` otherwise.
 
+### Validation with a `dry-validation`-style contract
+
+Pass a `contract:` object that responds to `call(input)` and returns a result with `success?` and `errors` (for example a `Dry::Validation::Contract` instance). On failure, the service gets `Result.failure` with `validation_error` and `details[:errors]` populated from the contract.
+
+```ruby
+class RegisterContract < Dry::Validation::Contract
+  params do
+    required(:email).filled(:string)
+    required(:password).filled(:string)
+  end
+end
+
+def register
+  val = validate(params, contract: RegisterContract.new)
+  return val if val.failure?
+  # ...
+end
+```
+
 ---
 
 ## Observability
@@ -596,9 +615,11 @@ end
 
 ### Subscribe to cross-domain warnings
 
+Each payload includes `log_json_line` and `log_kv_line`, single-line strings built with `Railsmith::CrossDomainWarningFormatter` (stable key order and JSON-safe values). You can also call `CrossDomainWarningFormatter.as_json_line(payload)` or `as_key_value_line(payload)` on a plain payload hash if you build your own.
+
 ```ruby
 Railsmith::Instrumentation.subscribe("cross_domain.warning.railsmith") do |_event, payload|
-  Rails.logger.warn("[railsmith:cross-domain] #{payload.inspect}")
+  Rails.logger.warn(payload[:log_json_line])
 end
 ```
 

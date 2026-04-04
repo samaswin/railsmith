@@ -10,20 +10,22 @@ module Railsmith
   # - +as_json+ — single JSON object for CI tooling and log aggregation.
   #
   # Usage:
-  #   report = Railsmith::ArchReport.new(violations: violations, checked_files: files)
+  #   report = Railsmith::ArchReport.new(violations: violations, checked_files: files, fail_on_arch_violations: true)
   #   puts report.as_text
   #   # or
   #   puts report.as_json
   class ArchReport
     SEPARATOR = ("=" * 30).freeze
 
-    attr_reader :violations, :checked_files
+    attr_reader :violations, :checked_files, :fail_on_arch_violations
 
     # @param violations [Array<ArchChecks::Violation>]
     # @param checked_files [Array<String>] paths that were analysed
-    def initialize(violations:, checked_files: [])
+    # @param fail_on_arch_violations [Boolean] when true, text footer reflects CI fail-on mode
+    def initialize(violations:, checked_files: [], fail_on_arch_violations: false)
       @violations = Array(violations)
       @checked_files = Array(checked_files)
+      @fail_on_arch_violations = fail_on_arch_violations
     end
 
     # @return [Boolean] true when no violations were found
@@ -57,7 +59,10 @@ module Railsmith
 
     # @return [Hash]
     def to_h
-      { summary: summary_hash, violations: violations.map { |v| violation_to_h(v) } }
+      {
+        summary: summary_hash.merge(fail_on_arch_violations: fail_on_arch_violations),
+        violations: violations.map { |v| violation_to_h(v) }
+      }
     end
 
     private
@@ -83,7 +88,13 @@ module Railsmith
     end
 
     def footer_line
-      clean? ? "OK — no violations found." : "Violations listed above are warnings only (warn-only mode)."
+      return "OK — no violations found." if clean?
+
+      if fail_on_arch_violations
+        "Violations listed above cause a non-zero exit (fail-on mode is enabled)."
+      else
+        "Violations listed above are warnings only (warn-only mode)."
+      end
     end
 
     def violation_lines(violation)

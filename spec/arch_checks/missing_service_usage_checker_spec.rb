@@ -107,6 +107,15 @@ RSpec.describe Railsmith::ArchChecks::MissingServiceUsageChecker do
       end
     end
 
+    it "accepts flat domain operation paths (1.1.0+ generator, no Operations segment)" do
+      with_temp_controller(<<~RUBY) do |file|
+        @user = User.find(params[:id])
+        result = Billing::Invoices::Create.call(params: { user: @user }, context: ctx)
+      RUBY
+        expect(checker.check_file(file)).to be_empty
+      end
+    end
+
     it "accepts *Operation.call delegation" do
       with_temp_controller(<<~RUBY) do |file|
         @post = Post.find(params[:id])

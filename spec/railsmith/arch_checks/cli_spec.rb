@@ -41,6 +41,32 @@ RSpec.describe Railsmith::ArchChecks::Cli do
 
       expect(status).to eq(1)
       expect(out.string).not_to be_empty
+      expect(JSON.parse(out.string).dig("summary", "fail_on_arch_violations")).to be true
+    end
+
+    it "prints fail-on footer in text mode when fail-on is enabled" do
+      env = {
+        "RAILSMITH_PATHS" => fixtures_controllers,
+        "RAILSMITH_FAIL_ON_ARCH_VIOLATIONS" => "true",
+        "RAILSMITH_FORMAT" => "text"
+      }
+      out = StringIO.new
+
+      described_class.run(env: env, output: out)
+
+      expect(out.string).to include("fail-on mode is enabled")
+    end
+
+    it "prints warn-only footer in text mode when fail-on is off" do
+      env = {
+        "RAILSMITH_PATHS" => fixtures_controllers,
+        "RAILSMITH_FORMAT" => "text"
+      }
+      out = StringIO.new
+
+      described_class.run(env: env, output: out)
+
+      expect(out.string).to include("warn-only mode")
     end
 
     it "returns 1 when configuration.fail_on_arch_violations is true" do

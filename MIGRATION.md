@@ -363,7 +363,7 @@ Add any missing keys to `config/initializers/railsmith.rb`. All keys have safe d
 ```ruby
 Railsmith.configure do |config|
   config.warn_on_cross_domain_calls = true   # default: true
-  config.strict_mode = false                  # default: false (reserved for v1.2)
+  config.strict_mode = false                  # default: false; when true, +on_cross_domain_violation+ runs on each cross-domain call
   config.fail_on_arch_violations = false      # default: false
   config.cross_domain_allowlist = []          # default: []
   config.on_cross_domain_violation = nil      # default: nil (no-op)

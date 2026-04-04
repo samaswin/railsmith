@@ -14,7 +14,6 @@ module Railsmith
 
       def create_service_directories
         empty_directory "app/services"
-        empty_directory "app/services/operations"
       end
     end
   end

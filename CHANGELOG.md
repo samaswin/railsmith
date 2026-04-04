@@ -9,6 +9,16 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Architecture checker `MissingServiceUsageChecker` recognizes flat domain operation calls (e.g. `Billing::Invoices::Create.call`) without an `Operations::` segment, matching the 1.1.0 generator defaults.
+- `ArchReport` text footer and JSON summary reflect fail-on vs warn-only mode (`fail_on_arch_violations`).
+
+### Changed
+
+- `railsmith:install` creates `app/services` only (no empty `app/services/operations/`).
+- Cross-domain warning payloads include `log_json_line` and `log_kv_line` from `CrossDomainWarningFormatter`.
+
 ---
 
 ## [1.1.0] — 2026-03-30

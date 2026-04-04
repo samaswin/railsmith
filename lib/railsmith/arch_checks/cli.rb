@@ -22,12 +22,20 @@ module Railsmith
         paths = paths_list
         fail_on = fail_on_violations?
         checked_files, violations = scan(paths)
-        report = Railsmith::ArchReport.new(violations: violations, checked_files: checked_files)
+        report = arch_report(violations, checked_files, fail_on)
         emit_report(format_sym, report)
         status_for(fail_on, report)
       end
 
       private
+
+      def arch_report(violations, checked_files, fail_on)
+        Railsmith::ArchReport.new(
+          violations: violations,
+          checked_files: checked_files,
+          fail_on_arch_violations: fail_on
+        )
+      end
 
       def normalized_format
         raw = @env.fetch("RAILSMITH_FORMAT", "text").downcase.strip

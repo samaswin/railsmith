@@ -120,8 +120,9 @@ module Railsmith
     # Scans public controller action methods for model access without service or operation delegation.
     #
     # Flags methods that call ActiveRecord methods directly but contain no reference
-    # to a +*Service+ / +*Operation+ entrypoint (+.new+ / +.call+), or a +::Operations::...+ class
-    # (+.call+ / +.new+), indicating the data-layer interaction has not been routed through the layer.
+    # to a +*Service+ / +*Operation+ entrypoint (+.new+ / +.call+), a namespaced domain operation
+    # (+Domain::...::Name.call+ / +.new+, including legacy +::Operations::...+ paths), indicating the
+    # data-layer interaction has not been routed through the layer.
     #
     # Method boundaries use standard 2-space Ruby indentation (RuboCop default).
     # Methods after a bare +private+ / +protected+ keyword are skipped. Single-line and endless
@@ -141,12 +142,21 @@ module Railsmith
         \b
       /x
 
-      # Domain operations from the generator live under +...+::Operations::...+ (e.g. +Billing::Operations::Invoices::Create.call+).
+      # Domain operations from the generator: legacy +...+::Operations::...+ (e.g. +Billing::Operations::Invoices::Create.call+).
       DOMAIN_OPERATION_RE = /
         \b
         (?:[A-Z][A-Za-z0-9]*::)+
         Operations::
         (?:[A-Z][A-Za-z0-9]*::)*
+        [A-Z][A-Za-z0-9]*
+        \.(?:new|call)
+        \b
+      /x
+
+      # 1.1.0+ layout: +Domain::Module::Operation.call+ with no +Operations+ segment (three+ constants).
+      FLAT_DOMAIN_OPERATION_RE = /
+        \b
+        (?:[A-Z][A-Za-z0-9]*::){2,}
         [A-Z][A-Za-z0-9]*
         \.(?:new|call)
         \b
@@ -187,7 +197,9 @@ module Railsmith
 
       def method_uses_service?(method)
         method[:body].any? do |line|
-          SERVICE_OR_OPERATION_RE.match?(line) || DOMAIN_OPERATION_RE.match?(line)
+          SERVICE_OR_OPERATION_RE.match?(line) ||
+            DOMAIN_OPERATION_RE.match?(line) ||
+            FLAT_DOMAIN_OPERATION_RE.match?(line)
         end
       end
 

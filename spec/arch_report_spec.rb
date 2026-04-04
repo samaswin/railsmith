@@ -73,6 +73,10 @@ RSpec.describe Railsmith::ArchReport do
       it "reports the checked file count" do
         expect(parsed.dig("summary", "checked_files")).to eq(2)
       end
+
+      it "includes fail_on_arch_violations in summary (default false)" do
+        expect(parsed.dig("summary", "fail_on_arch_violations")).to be false
+      end
     end
   end
 
@@ -113,8 +117,17 @@ RSpec.describe Railsmith::ArchReport do
         expect(text).to include("Action `index` accesses models")
       end
 
-      it "ends with the warn-only footer" do
+      it "ends with the warn-only footer when fail-on is off" do
         expect(text).to include("Violations listed above are warnings only")
+      end
+
+      it "ends with the fail-on footer when fail-on is enabled" do
+        report = described_class.new(
+          violations: [violation_a, violation_b],
+          checked_files: checked_files,
+          fail_on_arch_violations: true
+        )
+        expect(report.as_text).to include("non-zero exit (fail-on mode is enabled)")
       end
     end
 
@@ -123,6 +136,10 @@ RSpec.describe Railsmith::ArchReport do
 
       it "marks clean as false" do
         expect(parsed.dig("summary", "clean")).to be false
+      end
+
+      it "includes fail_on_arch_violations in summary" do
+        expect(parsed.dig("summary", "fail_on_arch_violations")).to be false
       end
 
       it "reports 2 violations" do

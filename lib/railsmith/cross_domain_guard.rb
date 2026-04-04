@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "cross_domain_warning_formatter"
+
 module Railsmith
   # Detects when a service from one bounded context runs under another domain's
   # request context (+context[:current_domain]+). Emits non-blocking
@@ -24,16 +26,24 @@ module Railsmith
     end
 
     def self.publish_violation(instance:, action:, configuration:, mismatch:)
-      payload = build_payload(
+      base = build_payload(
         context_domain: mismatch[:context_domain],
         service_domain: mismatch[:service_domain],
         service: instance.class.name,
         action: action,
         strict_mode: configuration.strict_mode
       )
+      payload = instrument_payload(base)
 
       Instrumentation.instrument("cross_domain.warning", payload)
       configuration.on_cross_domain_violation&.call(payload) if configuration.strict_mode
+    end
+
+    def self.instrument_payload(base)
+      base.merge(
+        log_json_line: CrossDomainWarningFormatter.as_json_line(base),
+        log_kv_line: CrossDomainWarningFormatter.as_key_value_line(base)
+      )
     end
 
     def self.domain_mismatch(instance)

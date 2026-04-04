@@ -164,7 +164,7 @@ ctx = Railsmith::Context.new(domain: :billing, request_id: "req-abc")
 Billing::Services::InvoiceService.call(action: :create, params: { ... }, context: ctx)
 ```
 
-When the context domain differs from a service's declared `domain`, Railsmith emits a `cross_domain.warning.railsmith` instrumentation event.
+When the context domain differs from a service's declared `domain`, Railsmith emits a `cross_domain.warning.railsmith` instrumentation event. The payload includes `log_json_line` and `log_kv_line` (from `Railsmith::CrossDomainWarningFormatter`) for structured logging; when `strict_mode` is true, `on_cross_domain_violation` receives the same payload.
 
 Configure enforcement in `config/initializers/railsmith.rb`:
 

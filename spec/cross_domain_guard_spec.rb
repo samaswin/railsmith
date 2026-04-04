@@ -143,6 +143,12 @@ RSpec.describe Railsmith::CrossDomainGuard do
       expect(warnings.first[:context_domain]).to eq(:billing)
       expect(warnings.first[:service_domain]).to eq(:catalog)
       expect(warnings.first[:blocking]).to be false
+      expect(warnings.first[:log_json_line]).to eq(
+        Railsmith::CrossDomainWarningFormatter.as_json_line(warnings.first.except(:log_json_line, :log_kv_line))
+      )
+      expect(warnings.first[:log_kv_line]).to eq(
+        Railsmith::CrossDomainWarningFormatter.as_key_value_line(warnings.first.except(:log_json_line, :log_kv_line))
+      )
     end
 
     it "dispatches cross_domain.warning.railsmith to plain Ruby subscribers" do

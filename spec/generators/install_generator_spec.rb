@@ -17,7 +17,6 @@ RSpec.describe Railsmith::Generators::InstallGenerator do
 
       expect(File).to exist(File.join(temp_dir, "config/initializers/railsmith.rb"))
       expect(File).to exist(File.join(temp_dir, "app/services"))
-      expect(File).to exist(File.join(temp_dir, "app/services/operations"))
     end
   end
 
