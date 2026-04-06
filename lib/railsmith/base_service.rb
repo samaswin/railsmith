@@ -5,6 +5,11 @@ module Railsmith
   class BaseService
     require_relative "base_service/dup_helpers"
     require_relative "base_service/validation"
+    require_relative "base_service/input_definition"
+    require_relative "base_service/input_registry"
+    require_relative "base_service/type_coercion"
+    require_relative "base_service/input_resolver"
+    require_relative "base_service/input_dsl"
     require_relative "base_service/crud_actions"
     require_relative "base_service/bulk_params"
     require_relative "base_service/bulk_execution"
@@ -17,6 +22,7 @@ module Railsmith
     require_relative "base_service/context_propagation"
     include DupHelpers
     include Validation
+    include InputDsl
     include CrudActions
     include BulkActions
     prepend ContextPropagation
@@ -77,6 +83,11 @@ module Railsmith
     def call(action:)
       normalized_action = normalize_action(action)
       return invalid_action_result(action: normalized_action) unless valid_action?(normalized_action)
+
+      if self.class.input_registry.any?
+        input_result = resolve_inputs
+        return input_result if input_result.failure?
+      end
 
       result = execute_action(action: normalized_action)
       normalize_result(result)

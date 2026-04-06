@@ -8,9 +8,18 @@ module Railsmith
       #
       # Supports either:
       # - required_keys: simple presence checks on Hash-like params
+      #   (DEPRECATED — use the `input` DSL with `required: true` instead)
       # - contract: a dry-validation-like contract responding to `call(input)` and returning
       #   an object that responds to `success?` and `errors`
       def validate(input = params, required_keys: [], contract: nil)
+        if required_keys.any? && self.class.input_registry.any?
+          warn "[DEPRECATION] `required_keys:` on `validate()` is deprecated and ignored " \
+               "when the `input` DSL is in use. Declare required inputs with " \
+               "`input :#{required_keys.first}, ..., required: true` instead."
+        elsif required_keys.any?
+          warn "[DEPRECATION] `required_keys:` on `validate()` is deprecated. " \
+               "Use the `input` DSL with `required: true` instead."
+        end
         return validate_with_contract(contract, input) if contract
 
         validate_required_keys(input, required_keys)
