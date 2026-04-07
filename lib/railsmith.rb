@@ -10,7 +10,9 @@ require_relative "railsmith/domain_context"
 require_relative "railsmith/instrumentation"
 require_relative "railsmith/cross_domain_guard"
 require_relative "railsmith/cross_domain_warning_formatter"
+require_relative "railsmith/failure"
 require_relative "railsmith/base_service"
+require_relative "railsmith/controller_helpers"
 
 require_relative "railsmith/railtie" if defined?(Rails::Railtie)
 

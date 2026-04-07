@@ -55,6 +55,13 @@ module Railsmith
         new(params:, context: resolved).call(action:)
       end
 
+      def call!(action:, params: {}, context: UNSET_CONTEXT)
+        result = call(action: action, params: params, context: context)
+        raise Railsmith::Failure, result if result.failure?
+
+        result
+      end
+
       def model(model_class = nil)
         return @model_class if model_class.nil?
 

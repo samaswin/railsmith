@@ -72,6 +72,48 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 - **Inheritance** — subclasses inherit all parent inputs and can add or override them independently.
 
+### Added — `call!` Variant & Error Enhancements
+
+- **`BaseService.call!`** — raising variant of `call`. Identical signature; raises `Railsmith::Failure` instead of returning a failure `Result`. Intended for controller contexts that use `rescue_from`:
+
+  ```ruby
+  # Raises on any failure result; returns the Result on success.
+  UserService.call!(action: :create, params: params, context: ctx)
+  ```
+
+- **`Railsmith::Failure`** — `StandardError` subclass wrapping a failure `Result`. Carries the original structured error so `rescue` / `rescue_from` handlers can inspect it without parsing a string:
+
+  ```ruby
+  rescue Railsmith::Failure => e
+    e.result   # => Railsmith::Result (failure)
+    e.code     # => "validation_error"
+    e.error    # => Railsmith::Errors::ErrorPayload
+    e.meta     # => {}
+    e.message  # => human-readable error message from the payload
+  end
+  ```
+
+- **`Railsmith::ControllerHelpers`** — `ActiveSupport::Concern` for Rails controllers. Include it once in `ApplicationController` to get automatic JSON error responses mapped to standard HTTP statuses:
+
+  ```ruby
+  class ApplicationController < ActionController::API
+    include Railsmith::ControllerHelpers
+  end
+  ```
+
+  Status mapping:
+
+  | Error code | HTTP status |
+  |---|---|
+  | `validation_error` | 422 Unprocessable Entity |
+  | `not_found` | 404 Not Found |
+  | `conflict` | 409 Conflict |
+  | `unauthorized` | 401 Unauthorized |
+  | `unexpected` | 500 Internal Server Error |
+  | _(unknown)_ | 500 Internal Server Error |
+
+  The rendered JSON body is `result.to_h` — same shape as every other Railsmith failure response.
+
 ### Added — Association Support
 
 - **`has_many` / `has_one` / `belongs_to` DSL** — declare associations directly on a service class:
