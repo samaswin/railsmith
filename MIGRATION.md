@@ -6,6 +6,80 @@ All changes in 1.2.0 are **additive and backward-compatible**. Every service wri
 
 ---
 
+### Input DSL (additive, replaces `required_keys:`)
+
+The `input` class macro declares expected parameters with types, defaults, and constraints. It is entirely opt-in — services without `input` declarations behave identically to 1.1.0.
+
+```ruby
+class UserService < Railsmith::BaseService
+  model User
+  domain :identity
+
+  input :email,    String,   required: true
+  input :age,      Integer,  default: nil
+  input :role,     String,   in: %w[admin member guest], default: "member"
+  input :active,   :boolean, default: true
+  input :metadata, Hash,     default: -> { {} }
+end
+```
+
+When inputs are declared:
+
+- Types are coerced automatically (string `"42"` → integer `42`, etc.)
+- Required fields that are missing or `nil` return a `validation_error` result
+- Only declared keys are forwarded to the action (undeclared keys are silently dropped)
+- Defaults are applied before the action runs
+
+**`required_keys:` is deprecated.** If you currently use `validate(params, required_keys: [:email])`, migrate to `input :email, String, required: true`. The `required_keys:` keyword continues to work but emits a deprecation warning. It will be removed in a future major release.
+
+```ruby
+# Before (deprecated, still works with warning)
+def create
+  val = validate(params, required_keys: [:email, :name])
+  return val if val.failure?
+  super
+end
+
+# After
+input :email, String, required: true
+input :name,  String, required: true
+```
+
+**No migration required.** Existing services are unaffected.
+
+---
+
+### `call!` and `ControllerHelpers` (additive)
+
+`BaseService.call!` is a new class method with the same signature as `call`. It raises `Railsmith::Failure` instead of returning a failure result, for use in controllers that prefer `rescue_from`.
+
+```ruby
+# Raises Railsmith::Failure on any failure; returns Result on success
+UserService.call!(action: :create, params: { attributes: user_params }, context: ctx)
+```
+
+`Railsmith::ControllerHelpers` is a new `ActiveSupport::Concern` for Rails controllers. Include it once in `ApplicationController` to handle all `Railsmith::Failure` exceptions with standard JSON responses and HTTP status codes:
+
+```ruby
+class ApplicationController < ActionController::API
+  include Railsmith::ControllerHelpers
+end
+```
+
+| Error code | HTTP status |
+|------------|-------------|
+| `validation_error` | 422 Unprocessable Entity |
+| `not_found` | 404 Not Found |
+| `conflict` | 409 Conflict |
+| `unauthorized` | 401 Unauthorized |
+| `unexpected` | 500 Internal Server Error |
+
+Both `call!` and `ControllerHelpers` are entirely opt-in. All existing `call` usage is unaffected.
+
+See [docs/call-bang.md](docs/call-bang.md) for detailed usage.
+
+---
+
 ### Association DSL (additive)
 
 `has_many`, `has_one`, and `belongs_to` are new class-level macros for declaring associations on a service. They are entirely opt-in — services without association declarations behave identically to 1.1.0.

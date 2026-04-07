@@ -72,6 +72,101 @@ result.error.to_h      # => { code: "not_found", message: "User not found", deta
 
 ---
 
+## Declarative Inputs
+
+Declare expected parameters with types, defaults, and constraints using the `input` DSL. Railsmith coerces, validates, and filters params automatically before the action runs.
+
+```ruby
+class UserService < Railsmith::BaseService
+  model User
+  domain :identity
+
+  input :email,    String,   required: true, transform: ->(v) { v.strip.downcase }
+  input :age,      Integer,  default: nil
+  input :role,     String,   in: %w[admin member guest], default: "member"
+  input :active,   :boolean, default: true
+  input :metadata, Hash,     default: -> { {} }
+end
+```
+
+- **Type coercion** — strings to integers, booleans, dates, and more
+- **Validation** — required fields, allowed value lists, coercion failures all return structured `validation_error` results
+- **Input filtering** — only declared keys reach the action (mass-assignment protection)
+- **Inheritance** — subclasses inherit parent inputs and can extend or override independently
+
+See [docs/inputs.md](docs/inputs.md) for the full reference.
+
+---
+
+## Association Support
+
+Declare associations at the service level for eager loading, nested CRUD, and cascading destroy.
+
+```ruby
+class OrderService < Railsmith::BaseService
+  model Order
+  domain :commerce
+
+  has_many   :line_items,       service: LineItemService, dependent: :destroy
+  has_one    :shipping_address, service: AddressService,  dependent: :nullify
+  belongs_to :customer,         service: CustomerService, optional: true
+
+  includes :line_items, :customer
+end
+```
+
+**Nested create** — pass associated records in `params`; the foreign key is injected automatically:
+
+```ruby
+OrderService.call(
+  action: :create,
+  params: {
+    attributes: { total: 99.99, customer_id: 7 },
+    line_items: [
+      { attributes: { product_id: 1, qty: 2, price: 29.99 } }
+    ]
+  },
+  context: ctx
+)
+```
+
+All nested writes run in the parent's transaction. Any failure rolls back everything.
+
+See [docs/associations.md](docs/associations.md) for the full reference.
+
+---
+
+## `call!` — Raising Variant
+
+`call!` raises `Railsmith::Failure` instead of returning a failure result. Use it in controllers with `rescue_from`:
+
+```ruby
+class ApplicationController < ActionController::API
+  include Railsmith::ControllerHelpers
+  # Catches Railsmith::Failure and renders JSON with the correct HTTP status
+end
+
+class UsersController < ApplicationController
+  def create
+    result = UserService.call!(action: :create, params: { attributes: user_params }, context: ctx)
+    render json: result.value, status: :created
+  end
+end
+```
+
+`Railsmith::Failure` carries the full structured result for inspection in rescue handlers:
+
+```ruby
+rescue Railsmith::Failure => e
+  e.code    # => "validation_error"
+  e.result  # => Railsmith::Result (failure)
+end
+```
+
+See [docs/call-bang.md](docs/call-bang.md) for the full reference.
+
+---
+
 ## Generators
 
 | Command | Output |
@@ -79,6 +174,8 @@ result.error.to_h      # => { code: "not_found", message: "User not found", deta
 | `rails g railsmith:install` | Initializer + service directories |
 | `rails g railsmith:domain Billing` | `app/domains/billing.rb` + subdirectories |
 | `rails g railsmith:model_service User` | `app/services/user_service.rb` |
+| `rails g railsmith:model_service User --inputs` | Service with `input` DSL (introspects model columns) |
+| `rails g railsmith:model_service Order --associations` | Service with association DSL (introspects model associations) |
 | `rails g railsmith:model_service Billing::Invoice --domain=Billing` | `app/domains/billing/services/invoice_service.rb` |
 | `rails g railsmith:operation Billing::Invoices::Create` | `app/domains/billing/invoices/create.rb` |
 
@@ -214,9 +311,12 @@ See [Migration](MIGRATION.md#embedding-architecture-checks-from-ruby) for option
 ## Documentation
 
 - [Quickstart](docs/quickstart.md) — install, generate, first call
-- [Cookbook](docs/cookbook.md) — CRUD, bulk, domain context, error mapping, observability
+- [Inputs](docs/inputs.md) — declarative input DSL, type coercion, filtering, custom coercions
+- [Associations](docs/associations.md) — association DSL, eager loading, nested CRUD, cascading destroy
+- [call!](docs/call-bang.md) — raising variant, controller integration, `ControllerHelpers`
+- [Cookbook](docs/cookbook.md) — CRUD, bulk, inputs, associations, domain context, error mapping, observability
 - [Legacy Adoption Guide](docs/legacy-adoption.md) — incremental migration strategy
-- [Migration](MIGRATION.md) — upgrading from 1.0.x to 1.1.x (and earlier releases)
+- [Migration](MIGRATION.md) — upgrading from 1.0.x to 1.2.x (and earlier releases)
 - [Changelog](CHANGELOG.md)
 
 ---

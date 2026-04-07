@@ -667,3 +667,253 @@ Railsmith.configure do |config|
   config.fail_on_arch_violations = true
 end
 ```
+
+---
+
+## Declarative Inputs
+
+### Service with validated, coerced inputs
+
+```ruby
+class UserService < Railsmith::BaseService
+  model User
+  domain :identity
+
+  input :email,    String,   required: true, transform: ->(v) { v.strip.downcase }
+  input :age,      Integer,  default: nil
+  input :role,     String,   in: %w[admin member guest], default: "member"
+  input :active,   :boolean, default: true
+  input :metadata, Hash,     default: -> { {} }
+end
+```
+
+```ruby
+# String "42" is coerced to Integer 42
+result = UserService.call(
+  action: :create,
+  params: { attributes: { email: " Alice@Example.com ", age: "42", role: "admin" } }
+)
+result.success?  # => true
+
+# Missing required field
+result = UserService.call(action: :create, params: { attributes: { age: 30 } })
+result.failure?          # => true
+result.code              # => "validation_error"
+result.error.details     # => { errors: { email: ["can't be blank"] } }
+
+# Invalid type
+result = UserService.call(action: :create, params: { attributes: { email: "a@b.com", age: "notanumber" } })
+result.error.details     # => { errors: { age: ["is not a valid Integer"] } }
+
+# Disallowed value
+result = UserService.call(action: :create, params: { attributes: { email: "a@b.com", role: "superuser" } })
+result.error.details     # => { errors: { role: ["is not included in the list"] } }
+```
+
+---
+
+### Input filtering (mass-assignment protection)
+
+When any `input` is declared, undeclared keys are silently dropped:
+
+```ruby
+class PostService < Railsmith::BaseService
+  model Post
+
+  input :title, String, required: true
+  input :body,  String, default: ""
+end
+
+PostService.call(
+  action: :create,
+  params: { attributes: { title: "Hello", body: "World", admin_flag: true, internal_id: 99 } }
+)
+# admin_flag and internal_id are dropped; only title and body reach the action
+```
+
+---
+
+### Coexisting with `validate()`
+
+```ruby
+class RegistrationService < Railsmith::BaseService
+  input :email,    String,  required: true
+  input :password, String,  required: true
+  input :role,     String,  in: %w[member guest], default: "member"
+
+  def register
+    # Additional validation after input resolution
+    val = validate(params, contract: RegistrationContract.new)
+    return val if val.failure?
+
+    user = User.create!(email: params[:email], password: params[:password])
+    Result.success(value: user)
+  end
+end
+```
+
+---
+
+## Associations
+
+### Nested order creation
+
+```ruby
+class OrderService < Railsmith::BaseService
+  model Order
+  domain :commerce
+
+  has_many   :line_items,       service: LineItemService, dependent: :destroy
+  has_one    :shipping_address, service: AddressService,  dependent: :nullify
+  belongs_to :customer,         service: CustomerService, optional: true
+
+  includes :line_items, :customer, :shipping_address
+end
+```
+
+```ruby
+result = OrderService.call(
+  action: :create,
+  params: {
+    attributes: { total: 99.99, customer_id: 7 },
+    line_items: [
+      { attributes: { product_id: 1, qty: 2, price: 29.99 } },
+      { attributes: { product_id: 5, qty: 1, price: 39.99 } }
+    ],
+    shipping_address: {
+      attributes: { street: "123 Main St", city: "Portland", zip: "97201" }
+    }
+  },
+  context: ctx
+)
+
+result.success?   # => true
+result.value      # => <Order> with line_items and shipping_address loaded
+result.meta[:nested]
+# => { line_items: { total: 2, success_count: 2, failure_count: 0 },
+#       shipping_address: { success: true } }
+```
+
+If any nested write fails, the entire transaction rolls back — the parent order is not saved.
+
+---
+
+### Nested update with mixed operations
+
+```ruby
+OrderService.call(
+  action: :update,
+  params: {
+    id: 42,
+    attributes: { total: 109.99 },
+    line_items: [
+      { id: 1, attributes: { qty: 3 } },        # update existing
+      { attributes: { product_id: 9, qty: 1 } }, # create new (FK injected automatically)
+      { id: 2, _destroy: true }                  # destroy existing
+    ]
+  },
+  context: ctx
+)
+```
+
+---
+
+### Eager loading to avoid N+1
+
+```ruby
+class OrderService < Railsmith::BaseService
+  model Order
+
+  includes :line_items, :customer
+  includes line_items: [:product, :variant]   # nested includes; additive
+end
+
+# find and list both apply the declared includes automatically
+result = OrderService.call(action: :find, params: { id: 1 })
+result.value.line_items  # => already loaded, no extra query
+```
+
+---
+
+### Cascading destroy
+
+```ruby
+class OrderService < Railsmith::BaseService
+  model Order
+
+  has_many :line_items,       service: LineItemService, dependent: :destroy
+  has_one  :shipping_address, service: AddressService,  dependent: :nullify
+end
+
+# Destroys all line_items via LineItemService,
+# nullifies shipping_address.order_id via AddressService,
+# then destroys the order — all in one transaction.
+OrderService.call(action: :destroy, params: { id: 42 }, context: ctx)
+```
+
+---
+
+## `call!` and Controller Integration
+
+### Using `call!` with `rescue_from`
+
+```ruby
+class ApplicationController < ActionController::API
+  include Railsmith::ControllerHelpers
+  # Automatically handles Railsmith::Failure and renders JSON with correct HTTP status
+end
+
+class UsersController < ApplicationController
+  def create
+    result = UserService.call!(
+      action: :create,
+      params: { attributes: user_params },
+      context: ctx
+    )
+    render json: result.value, status: :created
+    # Any failure raises Railsmith::Failure, caught by ControllerHelpers
+  end
+
+  private
+
+  def user_params
+    params.require(:user).permit(:email, :name, :role)
+  end
+end
+```
+
+---
+
+### Manual rescue for custom status mapping
+
+```ruby
+class InvoicesController < ApplicationController
+  def show
+    result = InvoiceService.call!(action: :find, params: { id: params[:id] }, context: ctx)
+    render json: result.value
+  rescue Railsmith::Failure => e
+    case e.code
+    when "not_found"    then render json: e.result.to_h, status: :not_found
+    when "unauthorized" then render json: e.result.to_h, status: :forbidden
+    else                     render json: e.result.to_h, status: :internal_server_error
+    end
+  end
+end
+```
+
+---
+
+### Chaining `call!` inside a service
+
+```ruby
+class CheckoutService < Railsmith::BaseService
+  def process
+    # Any failure propagates up immediately
+    InventoryService.call!(action: :reserve, params: { sku: params[:sku], qty: params[:qty] }, context: context)
+    PaymentService.call!(action: :charge, params: { amount: params[:total] }, context: context)
+    OrderService.call!(action: :create, params: { attributes: { sku: params[:sku] } }, context: context)
+  rescue Railsmith::Failure => e
+    e.result
+  end
+end
+```
