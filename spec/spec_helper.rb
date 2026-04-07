@@ -22,6 +22,7 @@ SimpleCov.start do
   add_group "Core",            %w[lib/railsmith/base_service.rb lib/railsmith/result.rb lib/railsmith/errors.rb]
 end
 
+require "active_support/concern"
 require "railsmith"
 require "timecop"
 
