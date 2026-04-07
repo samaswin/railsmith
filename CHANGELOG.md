@@ -7,7 +7,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [1.2.0] — 2026-04-07
+## [1.2.0] — 2026-04-08
 
 ### Added — Declarative Inputs & Type Coercion
 
