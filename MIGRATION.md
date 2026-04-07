@@ -1,5 +1,171 @@
 # Migration Guide
 
+## Upgrading from 1.1.0 to 1.2.0
+
+All changes in 1.2.0 are **additive and backward-compatible**. Every service written for 1.1.0 continues to work without modification.
+
+---
+
+### Association DSL (additive)
+
+`has_many`, `has_one`, and `belongs_to` are new class-level macros for declaring associations on a service. They are entirely opt-in — services without association declarations behave identically to 1.1.0.
+
+```ruby
+class OrderService < Railsmith::BaseService
+  model Order
+  domain :commerce
+
+  has_many   :line_items,       service: LineItemService, dependent: :destroy
+  has_one    :shipping_address, service: AddressService,  dependent: :nullify
+  belongs_to :customer,         service: CustomerService, optional: true
+end
+```
+
+**Options for `has_many` and `has_one`:**
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `service:` | Class | required | service class for the associated records |
+| `foreign_key:` | Symbol | inferred | FK column on the child; inferred as `#{parent_model}_id` |
+| `dependent:` | Symbol | `:ignore` | cascade behaviour on parent destroy (see Cascading Destroy below) |
+| `validate:` | Boolean | `true` | validate nested records |
+
+**Options for `belongs_to`:**
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `service:` | Class | required | service class for the parent record |
+| `foreign_key:` | Symbol | inferred | FK column on this record; inferred as `#{association_name}_id` |
+| `optional:` | Boolean | `false` | skip presence validation |
+
+**No migration required.** Existing services are unaffected.
+
+---
+
+### Eager Loading DSL (additive)
+
+The `includes` class macro declares eager loads applied automatically to `find` and `list`. Multiple calls are additive.
+
+```ruby
+class OrderService < Railsmith::BaseService
+  model Order
+
+  includes :line_items, :customer
+  includes line_items: [:product, :variant]   # merged with the call above
+end
+```
+
+Before adding `includes`, if you had a custom `find_record` override or a `list` override that applied its own `model_class.includes(...)`, those overrides are **unaffected** — the default `base_scope` applies only to the built-in `find` and `list` actions.
+
+If your custom action already calls `find_record(model_klass, id)` it will now benefit from declared eager loads automatically. If this is unwanted, keep calling `model_klass.find_by(id:)` directly.
+
+**No migration required.** Opt-in at your own pace.
+
+---
+
+### Nested Writes (additive)
+
+When associations are declared, the `create` and `update` actions accept nested records under the association key in `params`. No change is required in services that do not pass nested params — the guards check `params` for association keys and skip silently when none are present.
+
+#### Nested create
+
+```ruby
+OrderService.call(
+  action: :create,
+  params: {
+    attributes: { total: 99.99, customer_id: 7 },
+    line_items: [
+      { attributes: { product_id: 1, qty: 2, price: 29.99 } },
+      { attributes: { product_id: 5, qty: 1, price: 39.99 } }
+    ],
+    shipping_address: { attributes: { street: "123 Main St", city: "Portland" } }
+  },
+  context: ctx
+)
+```
+
+The parent FK (`order_id`) is injected into each child's attributes automatically — you do not pass it.
+
+All child writes run inside the parent's open transaction. Any failure rolls back the entire operation including the parent record.
+
+#### Nested update
+
+Pass nested items under the association key in `update` params. Per-item semantics:
+
+| Item shape | Action taken |
+|---|---|
+| `{ id:, attributes: }` | update the existing child record |
+| `{ attributes: }` (no `id`) | create a new child record (FK injected) |
+| `{ id:, _destroy: true }` | destroy the child record |
+
+```ruby
+OrderService.call(
+  action: :update,
+  params: {
+    id: 42,
+    attributes: { total: 109.99 },
+    line_items: [
+      { id: 1, attributes: { qty: 3 } },        # update
+      { attributes: { product_id: 9, qty: 1 } }, # create
+      { id: 2, _destroy: true }                  # destroy
+    ]
+  },
+  context: ctx
+)
+```
+
+**No migration required.** Existing `update` calls without nested keys work exactly as before.
+
+---
+
+### Cascading Destroy (additive)
+
+When `has_many` or `has_one` is declared with a `dependent:` option other than `:ignore`, the `destroy` action handles associated records through their service before deleting the parent.
+
+| `dependent:` | Behaviour |
+|---|---|
+| `:destroy` | calls child service `destroy` for each associated record |
+| `:nullify` | calls child service `update` with FK set to `nil` |
+| `:restrict` | returns `validation_error` failure if any children exist (parent is not deleted) |
+| `:ignore` | does nothing — default, matches 1.1.0 behaviour |
+
+The default is `:ignore` so no existing `destroy` call changes behaviour unless you explicitly add a `dependent:` option to an association.
+
+All cascading operations run inside the parent's transaction. Any failure rolls back the entire destroy.
+
+---
+
+### `bulk_create` — extended item format (backward-compatible)
+
+`bulk_create` now accepts items in either the existing flat format or a new nested format when associations are declared.
+
+```ruby
+# Flat format — unchanged, still works exactly as before
+items: [{ name: "A" }, { name: "B" }]
+
+# Nested format — new, used when associations are declared
+items: [
+  { attributes: { total: 50.00 }, line_items: [{ attributes: { product_id: 1, qty: 1 } }] },
+  { attributes: { total: 75.00 }, line_items: [{ attributes: { product_id: 2, qty: 1 } }] }
+]
+```
+
+The two formats are detected automatically by the presence of an `attributes:` key in the item hash. Existing bulk calls using the flat format continue to work without any change.
+
+---
+
+### Upgrade steps for 1.1.0 → 1.2.0
+
+1. Update `Gemfile`: `gem "railsmith", "~> 1.2"`
+2. Run `bundle install`.
+3. Run `bundle exec rspec` — all existing specs should pass with zero changes.
+4. Opt-in to the `input` DSL on services where you want type coercion and validation (Phase 1, already available since the unreleased branch).
+5. Opt-in to `has_many` / `has_one` / `belongs_to` on services that need nested writes or cascading destroy.
+6. Opt-in to `includes` on services that need eager loading on `find` and `list`.
+7. Deploy.
+
+---
+
 ## Upgrading from 1.0.0 to 1.1.0
 
 ### Ruby >= 3.1 (non-breaking)

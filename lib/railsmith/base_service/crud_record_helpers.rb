@@ -27,7 +27,7 @@ module Railsmith
       def find_record(model_klass, id)
         return missing_id_result if id.nil?
 
-        record = model_klass.find_by(id:)
+        record = base_scope(model_klass).find_by(id:)
         return Result.success(value: record) unless record.nil?
 
         not_found_result(model_klass, id)

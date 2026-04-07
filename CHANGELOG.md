@@ -9,6 +9,162 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added — Declarative Inputs & Type Coercion
+
+- **`input` DSL** — declare expected parameters with types, defaults, and constraints directly on any `BaseService` subclass:
+
+  ```ruby
+  class UserService < Railsmith::BaseService
+    model User
+    domain :identity
+
+    input :email,    String,   required: true
+    input :age,      Integer,  default: nil
+    input :role,     String,   in: %w[admin member guest], default: "member"
+    input :active,   :boolean, default: true
+    input :metadata, Hash,     default: -> { {} }
+  end
+  ```
+
+- **`Railsmith::BaseService::InputDefinition`** — frozen value object storing each input's `name`, `type`, `required`, `default` (static value or zero-arg lambda), `in_values`, and `transform`.
+
+- **`Railsmith::BaseService::InputRegistry`** — ordered collection of `InputDefinition`s attached to a service class; deep-duped on inheritance so subclasses can extend or override without affecting the parent.
+
+- **`Railsmith::BaseService::TypeCoercion`** — automatic type conversion before validation. Supported target types and strategies:
+
+  | Type | Behaviour |
+  |------|-----------|
+  | `String` | `value.to_s` |
+  | `Integer` | `Integer(value)` — strict; non-numeric strings produce `validation_error` |
+  | `Float` | `Float(value)` — strict |
+  | `BigDecimal` | `BigDecimal(value.to_s)` |
+  | `:boolean` | `"true"/"1"/true → true`, `"false"/"0"/false → false`; other values error |
+  | `Date` | `Date.parse(value.to_s)` |
+  | `DateTime` | `DateTime.parse(value.to_s)` |
+  | `Time` | `Time.parse(value.to_s)` |
+  | `Symbol` | `value.to_sym` |
+  | `Array` | `Array(value)` — wraps scalars |
+  | `Hash` | passthrough; non-hash values produce `validation_error` |
+
+- **`Railsmith::BaseService::InputResolver`** — single-pass pipeline that runs on every `call` when inputs are declared:
+  1. Apply defaults for missing keys
+  2. Coerce types
+  3. Validate required fields
+  4. Validate `in:` constraints
+  5. Apply `transform:` procs
+  6. Filter undeclared keys (security: prevents mass-assignment of unexpected fields)
+
+- **`filter_inputs false`** class-level opt-out — disables undeclared key filtering when needed. Inherited by subclasses.
+
+- **`transform:` option on `input`** — optional zero-arg Proc applied after coercion (e.g. `transform: ->(v) { v.strip.downcase }`).
+
+- **Custom coercions** — register arbitrary type coercers globally:
+
+  ```ruby
+  Railsmith.configure do |c|
+    c.register_coercion(:money, ->(v) { Money.new(v) })
+  end
+  ```
+
+- **`Configuration#register_coercion` / `#custom_coercions`** — storage and lookup for custom type coercers.
+
+- **Input scoping** — when a `model` is declared, inputs describe `params[:attributes]`; for custom (non-model) actions, inputs describe the top-level `params` hash.
+
+- **Inheritance** — subclasses inherit all parent inputs and can add or override them independently.
+
+### Added — Association Support
+
+- **`has_many` / `has_one` / `belongs_to` DSL** — declare associations directly on a service class:
+
+  ```ruby
+  class OrderService < Railsmith::BaseService
+    model Order
+    domain :commerce
+
+    has_many   :line_items,       service: LineItemService, dependent: :destroy
+    has_one    :shipping_address, service: AddressService,  dependent: :nullify
+    belongs_to :customer,         service: CustomerService, optional: true
+  end
+  ```
+
+- **`Railsmith::BaseService::AssociationDefinition`** — frozen value object per association, storing `name`, `kind` (`:has_many`, `:has_one`, `:belongs_to`), `service_class`, `foreign_key`, `dependent`, `optional`, and `validate`.
+
+- **`Railsmith::BaseService::AssociationRegistry`** — ordered collection of `AssociationDefinition`s; deep-duped on inheritance so subclasses extend associations without affecting parents.
+
+- **`Railsmith::BaseService::AssociationDsl`** — provides the `has_many`, `has_one`, and `belongs_to` class macros. Foreign keys are auto-inferred when not given:
+  - `has_many` / `has_one`: FK is `"#{parent_model_name.underscore}_id"` on the child (e.g. `order_id`)
+  - `belongs_to`: FK is `"#{association_name}_id"` on this record (e.g. `customer_id`)
+
+- **`includes` DSL** (`Railsmith::BaseService::EagerLoading`) — declare eager loads at the class level; multiple calls are additive:
+
+  ```ruby
+  class OrderService < Railsmith::BaseService
+    model Order
+
+    includes :line_items, :customer
+    includes line_items: [:product, :variant]
+  end
+  ```
+
+  Declared loads are applied automatically in `find` and `list` (via the `base_scope` helper). Custom action overrides are unaffected.
+
+- **`Railsmith::BaseService::NestedWriter`** — handles nested association writes within the parent's open transaction:
+
+  - **Nested create** — pass nested records under the association key in `params`; the FK is injected automatically:
+
+    ```ruby
+    OrderService.call(
+      action: :create,
+      params: {
+        attributes: { total: 99.99, customer_id: 7 },
+        line_items: [
+          { attributes: { product_id: 1, qty: 2, price: 29.99 } },
+          { attributes: { product_id: 5, qty: 1, price: 39.99 } }
+        ],
+        shipping_address: { attributes: { street: "123 Main St", city: "Portland" } }
+      },
+      context: ctx
+    )
+    ```
+
+  - **Nested update** — per-item semantics driven by the presence of `id` and `_destroy`:
+
+    | Item shape | Action |
+    |---|---|
+    | `{ id:, attributes: }` | update via child service |
+    | `{ attributes: }` (no `id`) | create via child service (FK injected) |
+    | `{ id:, _destroy: true }` | destroy via child service |
+
+  - **Cascading destroy** — controlled by the `dependent:` option on the association:
+
+    | Option | Behaviour |
+    |---|---|
+    | `:destroy` | calls child service `destroy` for each associated record |
+    | `:nullify` | calls child service `update` with FK set to `nil` |
+    | `:restrict` | returns `validation_error` failure if any children exist |
+    | `:ignore` | does nothing (default; relies on DB-level constraints) |
+
+  All nested operations run within the parent's transaction — any failure triggers a full rollback of both parent and nested writes.
+
+- **Association-aware `bulk_create`** — bulk items now support the nested format alongside the existing flat format:
+
+  ```ruby
+  # Flat (existing, unchanged)
+  items: [{ name: "A" }, { name: "B" }]
+
+  # Nested (new)
+  items: [
+    { attributes: { total: 50.00 }, line_items: [{ attributes: { product_id: 1, qty: 1 } }] },
+    { attributes: { total: 75.00 }, line_items: [{ attributes: { product_id: 2, qty: 1 } }] }
+  ]
+  ```
+
+  When no associations are declared the bulk format and behavior are identical to 1.1.0.
+
+### Deprecated
+
+- `required_keys:` keyword on `validate()` — emits a deprecation warning at runtime. Migrate to the `input` DSL with `required: true`. The parameter continues to work for services that do not use the `input` DSL.
+
 ### Fixed
 
 - Architecture checker `MissingServiceUsageChecker` recognizes flat domain operation calls (e.g. `Billing::Invoices::Create.call`) without an `Operations::` segment, matching the 1.1.0 generator defaults.

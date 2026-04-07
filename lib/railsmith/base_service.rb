@@ -10,6 +10,11 @@ module Railsmith
     require_relative "base_service/type_coercion"
     require_relative "base_service/input_resolver"
     require_relative "base_service/input_dsl"
+    require_relative "base_service/association_definition"
+    require_relative "base_service/association_registry"
+    require_relative "base_service/association_dsl"
+    require_relative "base_service/eager_loading"
+    require_relative "base_service/nested_writer"
     require_relative "base_service/crud_actions"
     require_relative "base_service/bulk_params"
     require_relative "base_service/bulk_execution"
@@ -23,6 +28,9 @@ module Railsmith
     include DupHelpers
     include Validation
     include InputDsl
+    include AssociationDsl
+    include EagerLoading
+    include NestedWriter
     include CrudActions
     include BulkActions
     prepend ContextPropagation

@@ -41,6 +41,14 @@ module Railsmith
         configured
       end
 
+      # Extracts the attributes hash from a bulk item, handling both the flat
+      # format ({ name: "A" }) and the nested format ({ attributes: { name: "A" } }).
+      def bulk_item_attributes(item)
+        return item unless item.is_a?(Hash) && item.key?(:attributes)
+
+        item[:attributes] || {}
+      end
+
       def bulk_transaction_mode
         return TRANSACTION_MODE_ALL_OR_NOTHING unless params.is_a?(Hash)
 

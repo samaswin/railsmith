@@ -13,9 +13,17 @@ module Railsmith
         model_klass = model_class
         return missing_model_class_result unless model_klass
 
-        bulk_write_operation(model_klass, operation: :bulk_create) do |attributes|
-          record = build_record(model_klass, sanitize_attributes(attributes || {}))
-          persist_write(record, method_name: :save)
+        has_assocs = self.class.respond_to?(:association_registry) && self.class.association_registry.any?
+
+        bulk_write_operation(model_klass, operation: :bulk_create) do |item|
+          # Support both flat attribute hashes ({ name: "A" }) and the
+          # nested format ({ attributes: { name: "A" }, line_items: [...] }).
+          attrs = bulk_item_attributes(item)
+          record = build_record(model_klass, sanitize_attributes(attrs))
+          result = persist_write(record, method_name: :save)
+          next result if result.failure? || !has_assocs
+
+          write_nested_for_item(record, item, :create)
         end
       end
 

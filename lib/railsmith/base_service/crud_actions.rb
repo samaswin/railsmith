@@ -11,7 +11,15 @@ module Railsmith
 
         with_transaction(model_klass) do
           record = build_record(model_klass, sanitize_attributes(attributes_params))
-          persist_write(record, method_name: :save)
+          result = persist_write(record, method_name: :save)
+          # Use block-return (next) so with_transaction sees the failure and rolls back.
+          next result if result.failure?
+
+          if self.class.respond_to?(:association_registry) && self.class.association_registry.any?
+            write_nested_after_create(record)
+          else
+            result
+          end
         end
       end
 
@@ -25,7 +33,14 @@ module Railsmith
 
           record = record_result.value
           assign_attributes(record, sanitize_attributes(attributes_params))
-          persist_write(record, method_name: :save)
+          result = persist_write(record, method_name: :save)
+          next result if result.failure?
+
+          if self.class.respond_to?(:association_registry) && self.class.association_registry.any?
+            write_nested_after_update(record)
+          else
+            result
+          end
         end
       end
 
@@ -37,7 +52,14 @@ module Railsmith
           record_result = find_record(model_klass, record_id)
           return record_result if record_result.failure?
 
-          persist_write(record_result.value, method_name: :destroy)
+          record = record_result.value
+
+          if self.class.respond_to?(:association_registry) && self.class.association_registry.any?
+            cascade_result = handle_cascading_destroy(record)
+            next cascade_result if cascade_result.failure?
+          end
+
+          persist_write(record, method_name: :destroy)
         end
       end
 
@@ -52,7 +74,7 @@ module Railsmith
         model_klass = model_class
         return missing_model_class_result unless model_klass
 
-        Result.success(value: model_klass.all)
+        Result.success(value: base_scope(model_klass).all)
       rescue StandardError => e
         Result.failure(error: map_exception_to_error(e))
       end
