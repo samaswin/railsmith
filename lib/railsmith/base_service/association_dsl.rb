@@ -20,6 +20,7 @@ module Railsmith
         base.extend(ClassMethods)
       end
 
+      # Class-level DSL macros for declaring associations on a service.
       module ClassMethods
         # Declare a has_many association.
         #
@@ -28,14 +29,14 @@ module Railsmith
         # @param foreign_key [Symbol]  explicit FK; inferred from parent model when omitted
         # @param dependent   [Symbol]  :destroy, :nullify, :restrict, or :ignore (default)
         # @param validate    [Boolean] validate nested records (default: true)
-        def has_many(name, service:, foreign_key: nil, dependent: :ignore, validate: true) # rubocop:disable Naming/PredicateName
+        def has_many(name, service:, foreign_key: nil, dependent: :ignore, validate: true) # rubocop:disable Naming/PredicatePrefix
           association_registry.register(
             AssociationDefinition.new(
               name, :has_many,
-              service:      service,
-              foreign_key:  foreign_key,
-              dependent:    dependent,
-              validate:     validate
+              service: service,
+              foreign_key: foreign_key,
+              dependent: dependent,
+              validate: validate
             )
           )
         end
@@ -47,14 +48,14 @@ module Railsmith
         # @param foreign_key [Symbol]  explicit FK; inferred from parent model when omitted
         # @param dependent   [Symbol]  :destroy, :nullify, :restrict, or :ignore (default)
         # @param validate    [Boolean] validate nested records (default: true)
-        def has_one(name, service:, foreign_key: nil, dependent: :ignore, validate: true) # rubocop:disable Naming/PredicateName
+        def has_one(name, service:, foreign_key: nil, dependent: :ignore, validate: true) # rubocop:disable Naming/PredicatePrefix
           association_registry.register(
             AssociationDefinition.new(
               name, :has_one,
-              service:      service,
-              foreign_key:  foreign_key,
-              dependent:    dependent,
-              validate:     validate
+              service: service,
+              foreign_key: foreign_key,
+              dependent: dependent,
+              validate: validate
             )
           )
         end
@@ -69,9 +70,9 @@ module Railsmith
           association_registry.register(
             AssociationDefinition.new(
               name, :belongs_to,
-              service:      service,
-              foreign_key:  foreign_key,
-              optional:     optional
+              service: service,
+              foreign_key: foreign_key,
+              optional: optional
             )
           )
         end

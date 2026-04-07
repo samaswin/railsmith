@@ -74,7 +74,10 @@ RSpec.describe "Railsmith::BaseService input DSL" do
     it "stores lambda defaults without calling them at declaration time" do
       counter = 0
       svc = custom_service do
-        input :tags, Array, default: -> { counter += 1; [] }
+        input :tags, Array, default: lambda {
+          counter += 1
+          []
+        }
       end
 
       defn = svc.input_registry[:tags]
@@ -92,7 +95,7 @@ RSpec.describe "Railsmith::BaseService input DSL" do
     end
 
     it "stores transform proc" do
-      upcaser = ->(v) { v.upcase }
+      upcaser = lambda(&:upcase)
       svc = custom_service do
         input :code, String, transform: upcaser
       end
@@ -241,7 +244,7 @@ RSpec.describe "Railsmith::BaseService input DSL" do
 
     it "applies transform after coercion" do
       svc2 = custom_service do
-        input :code, String, transform: ->(v) { v.upcase }
+        input :code, String, transform: lambda(&:upcase)
 
         def run
           params[:code]

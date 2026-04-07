@@ -16,7 +16,7 @@ module Railsmith
       # @param default  [Object, Proc]    static value or lambda called to produce default
       # @param in       [Array, nil]      allowed values whitelist
       # @param transform [Proc, nil]      optional post-coercion transformation
-      def initialize(name, type, required: false, default: UNSET, in: nil, transform: nil)
+      def initialize(name, type, required: false, default: UNSET, in: nil, transform: nil) # rubocop:disable Metrics/ParameterLists
         @name      = name.to_sym
         @type      = type
         @required  = required
@@ -26,7 +26,7 @@ module Railsmith
         freeze
       end
 
-      def has_default?
+      def default?
         !@default.equal?(UNSET)
       end
 

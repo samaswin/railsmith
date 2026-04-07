@@ -26,7 +26,7 @@ module Railsmith
     #   dependent: :restrict → returns failure if any children exist
     #   dependent: :ignore   → does nothing (rely on DB constraints)
     #
-    module NestedWriter
+    module NestedWriter # rubocop:disable Metrics/ModuleLength
       private
 
       # Call after successfully persisting a parent record during :create.
@@ -80,7 +80,7 @@ module Railsmith
       # Private implementation
       # -----------------------------------------------------------------------
 
-      def write_nested(parent_record, source_params, mode)
+      def write_nested(parent_record, source_params, mode) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
         registry = self.class.association_registry
         return Result.success(value: parent_record) unless registry.any?
 
@@ -112,7 +112,7 @@ module Railsmith
         end
       end
 
-      def write_has_many(defn, nested_params, fk_key, fk_value, mode)
+      def write_has_many(defn, nested_params, fk_key, fk_value, mode) # rubocop:disable Metrics/MethodLength
         return Result.success(value: []) unless nested_params.is_a?(Array)
 
         success_values = []
@@ -127,7 +127,7 @@ module Railsmith
         total = nested_params.size
         Result.success(
           value: success_values,
-          meta:  { total: total, success_count: total, failure_count: 0 }
+          meta: { total: total, success_count: total, failure_count: 0 }
         )
       end
 
@@ -137,30 +137,30 @@ module Railsmith
         write_nested_item(defn, nested_params, fk_key, fk_value, mode)
       end
 
-      def write_nested_item(defn, item_params, fk_key, fk_value, _mode)
+      def write_nested_item(defn, item_params, fk_key, fk_value, _mode) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
         return Result.success(value: nil) unless item_params.is_a?(Hash)
 
-        item_id      = item_params[:id]      || item_params["id"]
+        item_id      = item_params[:id] || item_params["id"]
         destroy_flag = item_params[:_destroy] || item_params["_destroy"]
 
         if item_id && truthy_destroy_flag?(destroy_flag)
           defn.service_class.call(
-            action:  :destroy,
-            params:  { id: item_id },
+            action: :destroy,
+            params: { id: item_id },
             context: context
           )
         elsif item_id
           attrs = extract_attributes(item_params).merge(fk_key => fk_value)
           defn.service_class.call(
-            action:  :update,
-            params:  { id: item_id, attributes: attrs },
+            action: :update,
+            params: { id: item_id, attributes: attrs },
             context: context
           )
         else
           attrs = extract_attributes(item_params).merge(fk_key => fk_value)
           defn.service_class.call(
-            action:  :create,
-            params:  { attributes: attrs },
+            action: :create,
+            params: { attributes: attrs },
             context: context
           )
         end
@@ -199,8 +199,8 @@ module Railsmith
       def cascade_nullify(defn, parent_record, fk_key)
         each_associated_id(defn, parent_record, fk_key) do |id|
           defn.service_class.call(
-            action:  :update,
-            params:  { id: id, attributes: { fk_key => nil } },
+            action: :update,
+            params: { id: id, attributes: { fk_key => nil } },
             context: context
           )
         end

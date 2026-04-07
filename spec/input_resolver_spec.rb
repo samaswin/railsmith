@@ -43,7 +43,10 @@ RSpec.describe Railsmith::BaseService::InputResolver do
 
     it "calls lambda default each time" do
       calls = 0
-      lam = -> { calls += 1; "generated" }
+      lam = lambda {
+        calls += 1
+        "generated"
+      }
       reg = registry_for(defn(:token, String, default: lam))
 
       resolve(reg, {})
@@ -163,13 +166,13 @@ RSpec.describe Railsmith::BaseService::InputResolver do
 
   describe "transform" do
     it "applies the transform proc after coercion" do
-      reg = registry_for(defn(:code, String, transform: ->(v) { v.upcase }))
+      reg = registry_for(defn(:code, String, transform: lambda(&:upcase)))
       result = resolve(reg, { code: "abc" })
       expect(result.value[:code]).to eq("ABC")
     end
 
     it "skips transform for nil values" do
-      reg = registry_for(defn(:code, String, transform: ->(v) { v.upcase }))
+      reg = registry_for(defn(:code, String, transform: lambda(&:upcase)))
       result = resolve(reg, { code: nil })
       expect(result.value[:code]).to be_nil
     end
@@ -219,7 +222,7 @@ RSpec.describe Railsmith::BaseService::InputResolver do
     it "stops after coercion failure and does not run validation" do
       reg = registry_for(
         defn(:count, Integer),
-        defn(:name,  String,  required: true)
+        defn(:name,  String, required: true)
       )
       # count coercion will fail; name missing would also fail, but we want one failure at a time
       result = resolve(reg, { count: "nope" })

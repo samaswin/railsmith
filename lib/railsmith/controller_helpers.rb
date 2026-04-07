@@ -18,10 +18,10 @@ module Railsmith
     # +render json:, status:+.
     ERROR_STATUS_MAP = {
       "validation_error" => :unprocessable_entity,
-      "not_found"        => :not_found,
-      "conflict"         => :conflict,
-      "unauthorized"     => :unauthorized,
-      "unexpected"       => :internal_server_error
+      "not_found" => :not_found,
+      "conflict" => :conflict,
+      "unauthorized" => :unauthorized,
+      "unexpected" => :internal_server_error
     }.freeze
 
     if defined?(ActiveSupport::Concern)

@@ -32,14 +32,18 @@ RSpec.describe "Railsmith::BaseService nested create" do
       self.table_name = "nc_lines"
       validates :qty, presence: true
     end)
-    Object.const_set(:NcNote,  Class.new(ActiveRecord::Base) { self.table_name = "nc_notes" })
+    Object.const_set(:NcNote, Class.new(ActiveRecord::Base) { self.table_name = "nc_notes" })
   end
 
   after(:all) do
     %i[NcOrder NcLine NcNote].each { |c| Object.send(:remove_const, c) if Object.const_defined?(c) }
   end
 
-  before { NcOrder.delete_all; NcLine.delete_all; NcNote.delete_all }
+  before do
+    NcOrder.delete_all
+    NcLine.delete_all
+    NcNote.delete_all
+  end
 
   let(:nc_line_service)  { Class.new(Railsmith::BaseService) { model NcLine } }
   let(:nc_note_service)  { Class.new(Railsmith::BaseService) { model NcNote } }
@@ -118,7 +122,7 @@ RSpec.describe "Railsmith::BaseService nested create" do
         action: :create,
         params: {
           attributes: { total: 1.00 },
-          nc_lines: [{ attributes: { qty: nil } }]  # qty is required
+          nc_lines: [{ attributes: { qty: nil } }] # qty is required
         },
         context: {}
       )

@@ -37,17 +37,17 @@ module Railsmith
       end
 
       BUILTIN_COERCIONS = {
-        String     => ->(v) { v.to_s },
-        Integer    => ->(v) { Integer(v) },
-        Float      => ->(v) { Float(v) },
-        Symbol     => ->(v) { v.to_sym },
-        Array      => ->(v) { Array(v) },
-        Hash       => lambda { |v|
+        String => lambda(&:to_s),
+        Integer => ->(v) { Integer(v) },
+        Float => ->(v) { Float(v) },
+        Symbol => lambda(&:to_sym),
+        Array => ->(v) { Array(v) },
+        Hash => lambda { |v|
           raise TypeError, "expected Hash" unless v.is_a?(Hash)
 
           v
         },
-        :boolean   => lambda { |v|
+        :boolean => lambda { |v|
           return true  if [true,  "true",  "1", 1].include?(v)
           return false if [false, "false", "0", 0].include?(v)
 
@@ -57,9 +57,9 @@ module Railsmith
 
       # Lazily-resolved coercions for types that may not be loaded at require time.
       LAZY_COERCIONS = {
-        "Date"       => -> { ->(v) { Date.parse(v.to_s) } },
-        "DateTime"   => -> { ->(v) { DateTime.parse(v.to_s) } },
-        "Time"       => -> { ->(v) { Time.parse(v.to_s) } },
+        "Date" => -> { ->(v) { Date.parse(v.to_s) } },
+        "DateTime" => -> { ->(v) { DateTime.parse(v.to_s) } },
+        "Time" => -> { ->(v) { Time.parse(v.to_s) } },
         "BigDecimal" => -> { ->(v) { BigDecimal(v.to_s) } }
       }.freeze
 
@@ -80,7 +80,7 @@ module Railsmith
           coercer.call(value)
         rescue CoercionError
           raise
-        rescue ArgumentError, TypeError, StandardError => e
+        rescue StandardError
           raise CoercionError.new(field, type, value)
         end
 
@@ -89,7 +89,7 @@ module Railsmith
         def already_correct_type?(value, type)
           case type
           when :boolean
-            value == true || value == false
+            [true, false].include?(value)
           when Class
             value.is_a?(type)
           else

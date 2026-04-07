@@ -37,7 +37,11 @@ RSpec.describe "Railsmith::BaseService cascading destroy" do
     %i[CdOrder CdItem CdNote].each { |c| Object.send(:remove_const, c) if Object.const_defined?(c) }
   end
 
-  before { CdOrder.delete_all; CdItem.delete_all; CdNote.delete_all }
+  before do
+    CdOrder.delete_all
+    CdItem.delete_all
+    CdNote.delete_all
+  end
 
   let(:cd_item_service) { Class.new(Railsmith::BaseService) { model CdItem } }
   let(:cd_note_service) { Class.new(Railsmith::BaseService) { model CdNote } }

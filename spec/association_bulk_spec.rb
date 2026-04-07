@@ -35,7 +35,10 @@ RSpec.describe "Railsmith::BaseService bulk operations with associations" do
     %i[AbOrder AbItem].each { |c| Object.send(:remove_const, c) if Object.const_defined?(c) }
   end
 
-  before { AbOrder.delete_all; AbItem.delete_all }
+  before do
+    AbOrder.delete_all
+    AbItem.delete_all
+  end
 
   let(:ab_item_service) { Class.new(Railsmith::BaseService) { model AbItem } }
 
@@ -116,7 +119,7 @@ RSpec.describe "Railsmith::BaseService bulk operations with associations" do
             },
             {
               attributes: { name: "Bad Order" },
-              ab_items: [{ attributes: { name: nil } }]  # name required → fails
+              ab_items: [{ attributes: { name: nil } }] # name required → fails
             }
           ]
         },
@@ -156,7 +159,7 @@ RSpec.describe "Railsmith::BaseService bulk operations with associations" do
             },
             {
               attributes: { name: "Bad Order" },
-              ab_items: [{ attributes: { name: nil } }]  # name required → fails
+              ab_items: [{ attributes: { name: nil } }] # name required → fails
             }
           ]
         },

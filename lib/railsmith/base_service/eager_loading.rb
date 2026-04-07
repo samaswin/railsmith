@@ -22,6 +22,7 @@ module Railsmith
         base.extend(ClassMethods)
       end
 
+      # Class-level DSL macros for declaring eager loads on a service.
       module ClassMethods
         # Declare one or more eager loads. Multiple calls are additive.
         #

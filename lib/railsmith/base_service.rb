@@ -2,7 +2,7 @@
 
 module Railsmith
   # Base service entrypoint with explicit (non-hook) lifecycle.
-  class BaseService
+  class BaseService # rubocop:disable Metrics/ClassLength
     require_relative "base_service/dup_helpers"
     require_relative "base_service/validation"
     require_relative "base_service/input_definition"

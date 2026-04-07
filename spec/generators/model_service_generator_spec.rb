@@ -220,9 +220,9 @@ RSpec.describe Railsmith::Generators::ModelServiceGenerator do
 
   it "introspects model columns when --inputs is given with no values" do
     columns = {
-      "id"         => double(type: :integer),
-      "email"      => double(type: :string),
-      "age"        => double(type: :integer),
+      "id" => double(type: :integer),
+      "email" => double(type: :string),
+      "age" => double(type: :integer),
       "created_at" => double(type: :datetime),
       "updated_at" => double(type: :datetime)
     }

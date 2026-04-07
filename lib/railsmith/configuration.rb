@@ -29,8 +29,6 @@ module Railsmith
     end
 
     # Returns the hash of custom coercions (keyed by type Class or Symbol).
-    def custom_coercions
-      @custom_coercions
-    end
+    attr_reader :custom_coercions
   end
 end

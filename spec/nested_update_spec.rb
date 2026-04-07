@@ -33,7 +33,10 @@ RSpec.describe "Railsmith::BaseService nested update" do
     %i[NuOrder NuLine].each { |c| Object.send(:remove_const, c) if Object.const_defined?(c) }
   end
 
-  before { NuOrder.delete_all; NuLine.delete_all }
+  before do
+    NuOrder.delete_all
+    NuLine.delete_all
+  end
 
   let(:nu_line_service) { Class.new(Railsmith::BaseService) { model NuLine } }
 
@@ -199,7 +202,7 @@ RSpec.describe "Railsmith::BaseService nested update" do
           id: order.id,
           attributes: {},
           nu_lines: [
-            { id: keep.id,   attributes: { qty: 10 } },   # update
+            { id: keep.id,   attributes: { qty: 10 } }, # update
             { id: remove.id, _destroy: true },             # destroy
             { attributes: { qty: 5 } }                     # create
           ]
@@ -228,7 +231,7 @@ RSpec.describe "Railsmith::BaseService nested update" do
         params: {
           id: order.id,
           attributes: { total: 999.00 },
-          nu_lines: [{ attributes: { qty: nil } }]  # qty required → fails
+          nu_lines: [{ attributes: { qty: nil } }] # qty required → fails
         },
         context: {}
       )

@@ -22,6 +22,7 @@ module Railsmith
         base.extend(ClassMethods)
       end
 
+      # Class-level DSL macros for declaring inputs on a service.
       module ClassMethods
         # Declare an input parameter.
         #
@@ -31,13 +32,13 @@ module Railsmith
         # @param default  [Object, #call]   static value or zero-arg lambda for the default
         # @param in       [Array, nil]      allowed values; other values produce validation_error
         # @param transform [Proc, nil]      applied after coercion; receives and returns the value
-        def input(name, type, required: false, default: InputDefinition::UNSET, in: nil, transform: nil)
+        def input(name, type, required: false, default: InputDefinition::UNSET, in: nil, transform: nil) # rubocop:disable Metrics/ParameterLists
           input_registry.register(
             InputDefinition.new(
               name, type,
-              required:  required,
-              default:   default,
-              in:        binding.local_variable_get(:in),
+              required: required,
+              default: default,
+              in: binding.local_variable_get(:in),
               transform: transform
             )
           )
@@ -63,9 +64,9 @@ module Railsmith
           super
           subclass.instance_variable_set(:@input_registry, input_registry.dup)
           # Propagate filter_inputs setting only if explicitly set on this class.
-          if instance_variable_defined?(:@filter_inputs)
-            subclass.instance_variable_set(:@filter_inputs, @filter_inputs)
-          end
+          return unless instance_variable_defined?(:@filter_inputs)
+
+          subclass.instance_variable_set(:@filter_inputs, @filter_inputs)
         end
       end
 
@@ -76,23 +77,36 @@ module Railsmith
         registry = self.class.input_registry
         return Railsmith::Result.success(value: @params) unless registry.any?
 
-        filter = self.class.filter_inputs
+        resolver = InputResolver.new(registry, filter: self.class.filter_inputs)
 
         # When a model is declared, inputs describe the attributes hash; otherwise raw params.
-        if self.class.respond_to?(:model) && self.class.model && @params.is_a?(Hash) && @params[:attributes].is_a?(Hash)
-          resolver = InputResolver.new(registry, filter: filter)
-          result   = resolver.resolve(@params[:attributes])
-          return result if result.failure?
-
-          @params = @params.merge(attributes: result.value)
+        if attributes_params?
+          resolve_attribute_inputs(resolver)
         else
-          resolver = InputResolver.new(registry, filter: filter)
-          result   = resolver.resolve(@params.is_a?(Hash) ? @params : {})
-          return result if result.failure?
-
-          @params = result.value
+          resolve_raw_inputs(resolver)
         end
+      end
 
+      private
+
+      def attributes_params?
+        self.class.respond_to?(:model) && self.class.model &&
+          @params.is_a?(Hash) && @params[:attributes].is_a?(Hash)
+      end
+
+      def resolve_attribute_inputs(resolver)
+        result = resolver.resolve(@params[:attributes])
+        return result if result.failure?
+
+        @params = @params.merge(attributes: result.value)
+        Railsmith::Result.success(value: @params)
+      end
+
+      def resolve_raw_inputs(resolver)
+        result = resolver.resolve(@params.is_a?(Hash) ? @params : {})
+        return result if result.failure?
+
+        @params = result.value
         Railsmith::Result.success(value: @params)
       end
     end

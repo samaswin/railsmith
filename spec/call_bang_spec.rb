@@ -39,9 +39,9 @@ RSpec.describe "BaseService.call!" do
 
   describe "on failure" do
     it "raises Railsmith::Failure" do
-      expect {
+      expect do
         failure_service.call!(action: :fetch, params: {}, context: {})
-      }.to raise_error(Railsmith::Failure)
+      end.to raise_error(Railsmith::Failure)
     end
 
     it "exception message matches the error message" do
@@ -90,11 +90,8 @@ RSpec.describe "BaseService.call!" do
 
   describe "invalid action" do
     it "raises Railsmith::Failure for an invalid action (call returns failure)" do
-      expect {
-        success_service.call!(action: :nonexistent, params: {}, context: {})
-      }.to raise_error(Railsmith::Failure) do |e|
-        expect(e.code).to eq("validation_error")
-      end
+      blk = -> { success_service.call!(action: :nonexistent, params: {}, context: {}) }
+      expect(&blk).to raise_error(Railsmith::Failure) { |e| expect(e.code).to eq("validation_error") }
     end
   end
 

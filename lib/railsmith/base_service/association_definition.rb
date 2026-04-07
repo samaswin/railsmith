@@ -16,11 +16,11 @@ module Railsmith
       # @param dependent    [Symbol]          :destroy, :nullify, :restrict, or :ignore (default)
       # @param optional     [Boolean]         belongs_to only — skip presence validation
       # @param validate     [Boolean]         validate nested records (default: true)
-      def initialize(name, kind, service:, foreign_key: nil, dependent: :ignore, optional: false, validate: true)
+      def initialize(name, kind, service:, foreign_key: nil, dependent: :ignore, optional: false, validate: true) # rubocop:disable Metrics/ParameterLists
         @name         = name.to_sym
         @kind         = kind.to_sym
         @service_class = service
-        @foreign_key  = foreign_key ? foreign_key.to_sym : nil
+        @foreign_key  = foreign_key&.to_sym
         @dependent    = (dependent || :ignore).to_sym
         @optional     = optional
         @validate     = validate
@@ -35,7 +35,7 @@ module Railsmith
       # belongs_to:         FK lives on this record → association_name_id (e.g. customer_id)
       #
       # @param parent_model_class [Class, nil]  the parent model class (used for inference)
-      def inferred_foreign_key(parent_model_class = nil)
+      def inferred_foreign_key(parent_model_class = nil) # rubocop:disable Metrics/MethodLength
         return @foreign_key if @foreign_key
 
         case kind

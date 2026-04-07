@@ -9,7 +9,7 @@ RSpec.describe Railsmith::ControllerHelpers do
   # rescue_from on the host class. We implement just enough of that interface
   # to exercise every line in controller_helpers.rb.
   # ---------------------------------------------------------------------------
-  def build_controller_class
+  def build_controller_class # rubocop:disable Metrics/MethodLength
     Class.new do
       @rescue_handlers = []
 
@@ -17,8 +17,8 @@ RSpec.describe Railsmith::ControllerHelpers do
         @rescue_handlers << [exception_class, block]
       end
 
-      def self.rescue_handlers
-        @rescue_handlers
+      class << self
+        attr_reader :rescue_handlers
       end
 
       include Railsmith::ControllerHelpers
@@ -49,10 +49,10 @@ RSpec.describe Railsmith::ControllerHelpers do
     it "maps every documented error code" do
       expect(map).to eq(
         "validation_error" => :unprocessable_entity,
-        "not_found"        => :not_found,
-        "conflict"         => :conflict,
-        "unauthorized"     => :unauthorized,
-        "unexpected"       => :internal_server_error
+        "not_found" => :not_found,
+        "conflict" => :conflict,
+        "unauthorized" => :unauthorized,
+        "unexpected" => :internal_server_error
       )
     end
   end
@@ -123,7 +123,7 @@ RSpec.describe Railsmith::ControllerHelpers do
     end
 
     it "includes the error details in the rendered JSON" do
-      error   = Railsmith::Errors.validation_error(message: "Name blank", details: { name: ["can't be blank"] })
+      error = Railsmith::Errors.validation_error(message: "Name blank", details: { name: ["can't be blank"] })
       rendered = raise_failure(error)
       expect(rendered[:json][:error][:details]).to eq({ name: ["can't be blank"] })
     end

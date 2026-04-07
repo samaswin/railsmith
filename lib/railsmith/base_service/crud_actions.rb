@@ -5,7 +5,7 @@ module Railsmith
     # Default `create`/`update`/`destroy` action implementations.
     # @api private
     module CrudActions
-      def create
+      def create # rubocop:disable Metrics/MethodLength
         model_klass = model_class
         return missing_model_class_result unless model_klass
 
@@ -23,7 +23,7 @@ module Railsmith
         end
       end
 
-      def update
+      def update # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
         model_klass = model_class
         return missing_model_class_result unless model_klass
 
@@ -44,7 +44,7 @@ module Railsmith
         end
       end
 
-      def destroy
+      def destroy # rubocop:disable Metrics/MethodLength
         model_klass = model_class
         return missing_model_class_result unless model_klass
 

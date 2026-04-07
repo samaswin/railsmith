@@ -25,7 +25,7 @@ module Railsmith
       #
       # @param raw_params [Hash]
       # @return [Railsmith::Result] success with resolved hash, or failure with validation_error
-      def resolve(raw_params)
+      def resolve(raw_params) # rubocop:disable Metrics/MethodLength
         return Result.success(value: raw_params) unless @registry.any?
 
         input = extract(raw_params)
@@ -55,13 +55,13 @@ module Railsmith
       def apply_defaults(input)
         @registry.all.each_with_object(input) do |defn, result|
           next if result.key?(defn.name) || result.key?(defn.name.to_s)
-          next unless defn.has_default?
+          next unless defn.default?
 
           result[defn.name] = defn.resolve_default
         end
       end
 
-      def coerce_types(input)
+      def coerce_types(input) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
         errors  = {}
         coerced = {}
 
@@ -89,7 +89,7 @@ module Railsmith
         )
       end
 
-      def validate(input)
+      def validate(input) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
         errors = {}
 
         @registry.all.each do |defn|
@@ -124,7 +124,7 @@ module Railsmith
       end
 
       def filter_keys(input)
-        allowed = @registry.all.map(&:name).to_set
+        allowed = @registry.all.to_set(&:name)
         input.each_with_object({}) do |(k, v), filtered|
           sym = k.to_sym
           filtered[sym] = v if allowed.include?(sym)

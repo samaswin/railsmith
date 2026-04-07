@@ -25,6 +25,7 @@ module Railsmith
     # Association DSL (--associations):
     # - Introspects model associations via reflect_on_all_associations
     # - Generates has_many, has_one, belongs_to DSL and includes declaration
+    # rubocop:disable Metrics/ClassLength
     class ModelServiceGenerator < Rails::Generators::NamedBase
       source_root File.expand_path("templates", __dir__)
 
@@ -65,6 +66,28 @@ module Railsmith
                    default: false,
                    desc: "Generate association DSL by introspecting the model's associations"
 
+      InputSpec = Struct.new(:name, :type_str, :required, keyword_init: true)
+      AssocSpec = Struct.new(:macro, :name, :service_class_name, :service_exists, keyword_init: true)
+
+      COLUMN_TYPE_MAP = {
+        "string" => "String",
+        "text" => "String",
+        "integer" => "Integer",
+        "bigint" => "Integer",
+        "float" => "Float",
+        "decimal" => "BigDecimal",
+        "boolean" => ":boolean",
+        "date" => "Date",
+        "datetime" => "DateTime",
+        "timestamp" => "DateTime",
+        "time" => "Time",
+        "json" => "Hash",
+        "jsonb" => "Hash",
+        "hstore" => "Hash"
+      }.freeze
+
+      SYSTEM_COLUMNS = %w[id created_at updated_at].freeze
+
       def create_model_service
         if File.exist?(File.join(destination_root, target_file)) && !options[:force]
           say_status(
@@ -79,28 +102,6 @@ module Railsmith
       end
 
       private
-
-      InputSpec = Struct.new(:name, :type_str, :required, keyword_init: true)
-      AssocSpec = Struct.new(:macro, :name, :service_class_name, :service_exists, keyword_init: true)
-
-      COLUMN_TYPE_MAP = {
-        "string"    => "String",
-        "text"      => "String",
-        "integer"   => "Integer",
-        "bigint"    => "Integer",
-        "float"     => "Float",
-        "decimal"   => "BigDecimal",
-        "boolean"   => ":boolean",
-        "date"      => "Date",
-        "datetime"  => "DateTime",
-        "timestamp" => "DateTime",
-        "time"      => "Time",
-        "json"      => "Hash",
-        "jsonb"     => "Hash",
-        "hstore"    => "Hash"
-      }.freeze
-
-      SYSTEM_COLUMNS = %w[id created_at updated_at].freeze
 
       def target_file = resolver.target_file
       def enclosing_modules = resolver.enclosing_modules
@@ -150,7 +151,7 @@ module Railsmith
         return [] unless model.respond_to?(:columns_hash)
 
         model.columns_hash
-             .reject { |col, _| SYSTEM_COLUMNS.include?(col) }
+             .except(*SYSTEM_COLUMNS)
              .map do |col_name, column|
                type_str = COLUMN_TYPE_MAP.fetch(column.type.to_s, "String")
                InputSpec.new(name: col_name, type_str: type_str, required: false)
@@ -161,18 +162,18 @@ module Railsmith
         model = try_load_model
         return [] unless model.respond_to?(:reflect_on_all_associations)
 
-        model.reflect_on_all_associations.map do |reflection|
-          assoc_name        = reflection.name.to_s
-          service_class_name = "#{assoc_name.classify}Service"
-          service_exists    = Object.const_defined?(service_class_name)
+        model.reflect_on_all_associations.map { |r| assoc_spec_for(r) }
+      end
 
-          AssocSpec.new(
-            macro:              reflection.macro.to_s,
-            name:               assoc_name,
-            service_class_name: service_class_name,
-            service_exists:     service_exists
-          )
-        end
+      def assoc_spec_for(reflection)
+        assoc_name = reflection.name.to_s
+        svc_name = "#{assoc_name.classify}Service"
+        AssocSpec.new(
+          macro: reflection.macro.to_s,
+          name: assoc_name,
+          service_class_name: svc_name,
+          service_exists: Object.const_defined?(svc_name)
+        )
       end
 
       def try_load_model
@@ -182,6 +183,7 @@ module Railsmith
         nil
       end
     end
+    # rubocop:enable Metrics/ClassLength
 
     # Computes target file path and enclosing module list for ModelServiceGenerator.
     class Resolver

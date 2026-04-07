@@ -40,7 +40,10 @@ RSpec.describe "Railsmith::BaseService Eager Loading" do
     Object.send(:remove_const, :ElTag)     if Object.const_defined?(:ElTag)
   end
 
-  before { ElProduct.delete_all; ElTag.delete_all }
+  before do
+    ElProduct.delete_all
+    ElTag.delete_all
+  end
 
   # =========================================================================
   # 1. includes macro — class-level API

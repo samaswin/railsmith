@@ -113,12 +113,12 @@ RSpec.describe Railsmith::BaseService::TypeCoercion do
 
   describe ":boolean coercion" do
     {
-      "true"  => true,
-      "1"     => true,
-      1       => true,
+      "true" => true,
+      "1" => true,
+      1 => true,
       "false" => false,
-      "0"     => false,
-      0       => false
+      "0" => false,
+      0 => false
     }.each do |input, expected|
       it "coerces #{input.inspect} to #{expected}" do
         expect(coerce(:flag, input, :boolean)).to eq(expected)
