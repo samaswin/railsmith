@@ -8,6 +8,27 @@ module <%= mod %>
 <% if service_domain_name -%>
 <%= member_indent %>domain :<%= service_domain_name %>
 <% end -%>
+<% if input_declarations.any? -%>
+
+<%= member_indent %># -- Inputs --
+<% input_declarations.each do |inp| -%>
+<%= member_indent %>input :<%= inp.name %>, <%= inp.type_str %><%= ", required: true" if inp.required %>
+<% end -%>
+<% end -%>
+<% if association_declarations.any? -%>
+
+<%= member_indent %># -- Associations --
+<% association_declarations.each do |assoc| -%>
+<% unless assoc.service_exists -%>
+<%= member_indent %># TODO: Define <%= assoc.service_class_name %>
+<% end -%>
+<%= member_indent %><%= assoc.macro %> :<%= assoc.name %>, service: <%= assoc.service_class_name %>
+<% end -%>
+<% if eager_load_names.any? -%>
+
+<%= member_indent %>includes <%= eager_load_names.map { |e| ":#{e}" }.join(", ") %>
+<% end -%>
+<% end -%>
 <% if stub_action?("create") -%>
 
 <%= member_indent %>def create

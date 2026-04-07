@@ -203,6 +203,32 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
   When no associations are declared the bulk format and behavior are identical to 1.1.0.
 
+### Added — Generator Updates
+
+- **`--inputs` flag on `railsmith:model_service`** — generates `input` DSL declarations in the scaffolded service. Two modes:
+
+  - **Auto-introspect** (`--inputs` with no values): reads `Model.columns_hash` and emits one `input` declaration per non-system column (`id`, `created_at`, `updated_at` are excluded). Requires the model to be loaded at generation time; prints a warning and skips gracefully when it isn't.
+  - **Explicit** (`--inputs=email:string:required name:string age:integer`): generates the listed inputs without touching the model. Format per spec: `name:type[:required]`.
+
+  Supported type tokens and their mapped Ruby types:
+
+  | Token | Ruby type |
+  |---|---|
+  | `string`, `text` | `String` |
+  | `integer`, `bigint` | `Integer` |
+  | `float` | `Float` |
+  | `decimal` | `BigDecimal` |
+  | `boolean` | `:boolean` |
+  | `date` | `Date` |
+  | `datetime`, `timestamp` | `DateTime` |
+  | `time` | `Time` |
+  | `json`, `jsonb`, `hstore` | `Hash` |
+  | _(unknown)_ | `String` |
+
+- **`--associations` flag on `railsmith:model_service`** — introspects `Model.reflect_on_all_associations` and emits `has_many`, `has_one`, and `belongs_to` declarations plus an `includes` line covering all associations. Prints a warning and skips when the model can't be loaded. Adds `# TODO: Define XxxService` comments for associated service classes that are not yet defined.
+
+- **Updated `model_service.rb.tt` template** — renders optional `# -- Inputs --` and `# -- Associations --` sections when the respective flags are used. Sections are omitted entirely when the flags are absent, preserving the existing output for services generated without them.
+
 ### Deprecated
 
 - `required_keys:` keyword on `validate()` — emits a deprecation warning at runtime. Migrate to the `input` DSL with `required: true`. The parameter continues to work for services that do not use the `input` DSL.
