@@ -11,3 +11,24 @@ Style/StringLiteralsInInterpolation:
 Metrics/BlockLength:
   Exclude:
     - "spec/**/*"
+
+Metrics/MethodLength:
+  Exclude:
+    - "spec/**/*"
+
+# Keyword arguments do not add meaningful complexity; exclude them from the count.
+Metrics/ParameterLists:
+  CountKeywordArgs: false
+
+# Orchestrator classes and implementation modules legitimately exceed the default.
+Metrics/ClassLength:
+  Max: 160
+
+Metrics/ModuleLength:
+  Max: 220
+
+# has_many / has_one are intentional Rails-style DSL names, not predicate queries.
+Naming/PredicatePrefix:
+  AllowedMethods:
+    - has_many
+    - has_one

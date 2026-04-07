@@ -5,6 +5,109 @@ require "active_support/core_ext/string/inflections"
 
 module Railsmith
   module Generators
+    InputSpec = Struct.new(:name, :type_str, :required, keyword_init: true)
+    AssocSpec = Struct.new(:macro, :name, :service_class_name, :service_exists, keyword_init: true)
+
+    COLUMN_TYPE_MAP = {
+      "string" => "String",
+      "text" => "String",
+      "integer" => "Integer",
+      "bigint" => "Integer",
+      "float" => "Float",
+      "decimal" => "BigDecimal",
+      "boolean" => ":boolean",
+      "date" => "Date",
+      "datetime" => "DateTime",
+      "timestamp" => "DateTime",
+      "time" => "Time",
+      "json" => "Hash",
+      "jsonb" => "Hash",
+      "hstore" => "Hash"
+    }.freeze
+
+    SYSTEM_COLUMNS = %w[id created_at updated_at].freeze
+
+    # Internal helpers for the model service generator.
+    module ModelServiceGeneratorSupport
+      private
+
+      def target_file = resolver.target_file
+      def enclosing_modules = resolver.enclosing_modules
+      def service_domain_name = resolver.service_domain_name
+      def service_class_name = "#{class_name}Service"
+      def class_indent = enclosing_modules.empty? ? "" : "  "
+      def member_indent = enclosing_modules.empty? ? "  " : "    "
+      def stub_action?(action_name) = resolver.declared_actions.include?(action_name.to_s)
+
+      def input_declarations
+        return [] if options[:inputs].nil?
+
+        options[:inputs].empty? ? introspect_model_inputs : parse_input_specs(options[:inputs])
+      end
+
+      def association_declarations
+        return [] unless options[:associations]
+
+        introspect_model_associations
+      end
+
+      def eager_load_names
+        association_declarations.map { |assoc| assoc.name.to_s }
+      end
+
+      def resolver
+        @resolver ||= Resolver.new(class_name, options)
+      end
+
+      def parse_input_specs(specs)
+        specs.map do |spec|
+          parts = spec.split(":")
+          name = parts[0]
+          type_key = parts[1]&.downcase || "string"
+          type_str = COLUMN_TYPE_MAP.fetch(type_key, "String")
+          required = parts[2]&.downcase == "required"
+          InputSpec.new(name: name, type_str: type_str, required: required)
+        end
+      end
+
+      def introspect_model_inputs
+        model = try_load_model
+        return [] unless model.respond_to?(:columns_hash)
+
+        model.columns_hash
+             .except(*SYSTEM_COLUMNS)
+             .map do |col_name, column|
+               type_str = COLUMN_TYPE_MAP.fetch(column.type.to_s, "String")
+               InputSpec.new(name: col_name, type_str: type_str, required: false)
+             end
+      end
+
+      def introspect_model_associations
+        model = try_load_model
+        return [] unless model.respond_to?(:reflect_on_all_associations)
+
+        model.reflect_on_all_associations.map { |reflection| assoc_spec_for(reflection) }
+      end
+
+      def assoc_spec_for(reflection)
+        assoc_name = reflection.name.to_s
+        svc_name = "#{assoc_name.classify}Service"
+        AssocSpec.new(
+          macro: reflection.macro.to_s,
+          name: assoc_name,
+          service_class_name: svc_name,
+          service_exists: Object.const_defined?(svc_name)
+        )
+      end
+
+      def try_load_model
+        Object.const_get(class_name)
+      rescue NameError
+        say_status(:warning, "Could not load #{class_name} for introspection — skipping", :yellow)
+        nil
+      end
+    end
+
     # Scaffolds a service class for a given model constant.
     #
     # Default mode (no flags):
@@ -25,9 +128,9 @@ module Railsmith
     # Association DSL (--associations):
     # - Introspects model associations via reflect_on_all_associations
     # - Generates has_many, has_one, belongs_to DSL and includes declaration
-    # rubocop:disable Metrics/ClassLength
     class ModelServiceGenerator < Rails::Generators::NamedBase
       source_root File.expand_path("templates", __dir__)
+      include ModelServiceGeneratorSupport
 
       class_option :output_path,
                    type: :string,
@@ -66,28 +169,6 @@ module Railsmith
                    default: false,
                    desc: "Generate association DSL by introspecting the model's associations"
 
-      InputSpec = Struct.new(:name, :type_str, :required, keyword_init: true)
-      AssocSpec = Struct.new(:macro, :name, :service_class_name, :service_exists, keyword_init: true)
-
-      COLUMN_TYPE_MAP = {
-        "string" => "String",
-        "text" => "String",
-        "integer" => "Integer",
-        "bigint" => "Integer",
-        "float" => "Float",
-        "decimal" => "BigDecimal",
-        "boolean" => ":boolean",
-        "date" => "Date",
-        "datetime" => "DateTime",
-        "timestamp" => "DateTime",
-        "time" => "Time",
-        "json" => "Hash",
-        "jsonb" => "Hash",
-        "hstore" => "Hash"
-      }.freeze
-
-      SYSTEM_COLUMNS = %w[id created_at updated_at].freeze
-
       def create_model_service
         if File.exist?(File.join(destination_root, target_file)) && !options[:force]
           say_status(
@@ -100,90 +181,7 @@ module Railsmith
 
         template "model_service.rb.tt", target_file
       end
-
-      private
-
-      def target_file = resolver.target_file
-      def enclosing_modules = resolver.enclosing_modules
-      def service_domain_name = resolver.service_domain_name
-      def service_class_name = "#{class_name}Service"
-      def class_indent = enclosing_modules.empty? ? "" : "  "
-      def member_indent = enclosing_modules.empty? ? "  " : "    "
-      def stub_action?(action_name) = resolver.declared_actions.include?(action_name.to_s)
-
-      def input_declarations
-        return [] if options[:inputs].nil?
-
-        if options[:inputs].empty?
-          introspect_model_inputs
-        else
-          parse_input_specs(options[:inputs])
-        end
-      end
-
-      def association_declarations
-        return [] unless options[:associations]
-
-        introspect_model_associations
-      end
-
-      def eager_load_names
-        association_declarations.map { |a| a.name.to_s }
-      end
-
-      def resolver
-        @resolver ||= Resolver.new(class_name, options)
-      end
-
-      def parse_input_specs(specs)
-        specs.map do |spec|
-          parts = spec.split(":")
-          name     = parts[0]
-          type_key = parts[1]&.downcase || "string"
-          type_str = COLUMN_TYPE_MAP.fetch(type_key, "String")
-          required = parts[2]&.downcase == "required"
-          InputSpec.new(name: name, type_str: type_str, required: required)
-        end
-      end
-
-      def introspect_model_inputs
-        model = try_load_model
-        return [] unless model.respond_to?(:columns_hash)
-
-        model.columns_hash
-             .except(*SYSTEM_COLUMNS)
-             .map do |col_name, column|
-               type_str = COLUMN_TYPE_MAP.fetch(column.type.to_s, "String")
-               InputSpec.new(name: col_name, type_str: type_str, required: false)
-             end
-      end
-
-      def introspect_model_associations
-        model = try_load_model
-        return [] unless model.respond_to?(:reflect_on_all_associations)
-
-        model.reflect_on_all_associations.map { |r| assoc_spec_for(r) }
-      end
-
-      def assoc_spec_for(reflection)
-        assoc_name = reflection.name.to_s
-        svc_name = "#{assoc_name.classify}Service"
-        AssocSpec.new(
-          macro: reflection.macro.to_s,
-          name: assoc_name,
-          service_class_name: svc_name,
-          service_exists: Object.const_defined?(svc_name)
-        )
-      end
-
-      def try_load_model
-        Object.const_get(class_name)
-      rescue NameError
-        say_status(:warning, "Could not load #{class_name} for introspection — skipping", :yellow)
-        nil
-      end
     end
-    # rubocop:enable Metrics/ClassLength
 
     # Computes target file path and enclosing module list for ModelServiceGenerator.
     class Resolver

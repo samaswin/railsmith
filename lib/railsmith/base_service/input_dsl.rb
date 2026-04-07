@@ -28,18 +28,12 @@ module Railsmith
         #
         # @param name     [Symbol, String]  parameter key
         # @param type     [Class, Symbol]   expected type; use :boolean for booleans
-        # @param required [Boolean]         raises validation_error when missing (default: false)
-        # @param default  [Object, #call]   static value or zero-arg lambda for the default
-        # @param in       [Array, nil]      allowed values; other values produce validation_error
-        # @param transform [Proc, nil]      applied after coercion; receives and returns the value
-        def input(name, type, required: false, default: InputDefinition::UNSET, in: nil, transform: nil) # rubocop:disable Metrics/ParameterLists
+        # @param options [Hash]            supported keys: :required, :default, :in, :transform
+        def input(name, type, **options)
           input_registry.register(
             InputDefinition.new(
               name, type,
-              required: required,
-              default: default,
-              in: binding.local_variable_get(:in),
-              transform: transform
+              **normalize_input_options(options)
             )
           )
         end
@@ -67,6 +61,15 @@ module Railsmith
           return unless instance_variable_defined?(:@filter_inputs)
 
           subclass.instance_variable_set(:@filter_inputs, @filter_inputs)
+        end
+
+        def normalize_input_options(options)
+          {
+            required: options.fetch(:required, false),
+            default: options.fetch(:default, InputDefinition::UNSET),
+            in: options[:in],
+            transform: options[:transform]
+          }
         end
       end
 

@@ -1,30 +1,32 @@
 # frozen_string_literal: true
 
+# Railsmith provides a service-layer toolkit for Rails apps.
 module Railsmith
+  require_relative "base_service/dup_helpers"
+  require_relative "base_service/validation"
+  require_relative "base_service/input_definition"
+  require_relative "base_service/input_registry"
+  require_relative "base_service/type_coercion"
+  require_relative "base_service/input_resolver"
+  require_relative "base_service/input_dsl"
+  require_relative "base_service/association_definition"
+  require_relative "base_service/association_registry"
+  require_relative "base_service/association_dsl"
+  require_relative "base_service/eager_loading"
+  require_relative "base_service/nested_writer"
+  require_relative "base_service/crud_actions"
+  require_relative "base_service/bulk_params"
+  require_relative "base_service/bulk_execution"
+  require_relative "base_service/bulk_contract"
+  require_relative "base_service/bulk_actions"
+  require_relative "base_service/crud_model_resolution"
+  require_relative "base_service/crud_record_helpers"
+  require_relative "base_service/crud_error_mapping"
+  require_relative "base_service/crud_transactions"
+  require_relative "base_service/context_propagation"
+
   # Base service entrypoint with explicit (non-hook) lifecycle.
-  class BaseService # rubocop:disable Metrics/ClassLength
-    require_relative "base_service/dup_helpers"
-    require_relative "base_service/validation"
-    require_relative "base_service/input_definition"
-    require_relative "base_service/input_registry"
-    require_relative "base_service/type_coercion"
-    require_relative "base_service/input_resolver"
-    require_relative "base_service/input_dsl"
-    require_relative "base_service/association_definition"
-    require_relative "base_service/association_registry"
-    require_relative "base_service/association_dsl"
-    require_relative "base_service/eager_loading"
-    require_relative "base_service/nested_writer"
-    require_relative "base_service/crud_actions"
-    require_relative "base_service/bulk_params"
-    require_relative "base_service/bulk_execution"
-    require_relative "base_service/bulk_contract"
-    require_relative "base_service/bulk_actions"
-    require_relative "base_service/crud_model_resolution"
-    require_relative "base_service/crud_record_helpers"
-    require_relative "base_service/crud_error_mapping"
-    require_relative "base_service/crud_transactions"
-    require_relative "base_service/context_propagation"
+  class BaseService
     include DupHelpers
     include Validation
     include InputDsl

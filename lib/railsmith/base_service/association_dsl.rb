@@ -29,7 +29,7 @@ module Railsmith
         # @param foreign_key [Symbol]  explicit FK; inferred from parent model when omitted
         # @param dependent   [Symbol]  :destroy, :nullify, :restrict, or :ignore (default)
         # @param validate    [Boolean] validate nested records (default: true)
-        def has_many(name, service:, foreign_key: nil, dependent: :ignore, validate: true) # rubocop:disable Naming/PredicatePrefix
+        def has_many(name, service:, foreign_key: nil, dependent: :ignore, validate: true)
           association_registry.register(
             AssociationDefinition.new(
               name, :has_many,
@@ -48,7 +48,7 @@ module Railsmith
         # @param foreign_key [Symbol]  explicit FK; inferred from parent model when omitted
         # @param dependent   [Symbol]  :destroy, :nullify, :restrict, or :ignore (default)
         # @param validate    [Boolean] validate nested records (default: true)
-        def has_one(name, service:, foreign_key: nil, dependent: :ignore, validate: true) # rubocop:disable Naming/PredicatePrefix
+        def has_one(name, service:, foreign_key: nil, dependent: :ignore, validate: true)
           association_registry.register(
             AssociationDefinition.new(
               name, :has_one,

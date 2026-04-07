@@ -5,59 +5,32 @@ module Railsmith
     # Default `create`/`update`/`destroy` action implementations.
     # @api private
     module CrudActions
-      def create # rubocop:disable Metrics/MethodLength
-        model_klass = model_class
-        return missing_model_class_result unless model_klass
-
-        with_transaction(model_klass) do
+      def create
+        with_model_transaction do |model_klass|
           record = build_record(model_klass, sanitize_attributes(attributes_params))
-          result = persist_write(record, method_name: :save)
-          # Use block-return (next) so with_transaction sees the failure and rolls back.
-          next result if result.failure?
-
-          if self.class.respond_to?(:association_registry) && self.class.association_registry.any?
-            write_nested_after_create(record)
-          else
-            result
-          end
+          write_with_nested_support(record, write_method: :save, nested_mode: :create)
         end
       end
 
-      def update # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
-        model_klass = model_class
-        return missing_model_class_result unless model_klass
-
-        with_transaction(model_klass) do
+      def update
+        with_model_transaction do |model_klass|
           record_result = find_record(model_klass, record_id)
-          return record_result if record_result.failure?
+          next record_result if record_result.failure?
 
           record = record_result.value
           assign_attributes(record, sanitize_attributes(attributes_params))
-          result = persist_write(record, method_name: :save)
-          next result if result.failure?
-
-          if self.class.respond_to?(:association_registry) && self.class.association_registry.any?
-            write_nested_after_update(record)
-          else
-            result
-          end
+          write_with_nested_support(record, write_method: :save, nested_mode: :update)
         end
       end
 
-      def destroy # rubocop:disable Metrics/MethodLength
-        model_klass = model_class
-        return missing_model_class_result unless model_klass
-
-        with_transaction(model_klass) do
+      def destroy
+        with_model_transaction do |model_klass|
           record_result = find_record(model_klass, record_id)
-          return record_result if record_result.failure?
+          next record_result if record_result.failure?
 
           record = record_result.value
-
-          if self.class.respond_to?(:association_registry) && self.class.association_registry.any?
-            cascade_result = handle_cascading_destroy(record)
-            next cascade_result if cascade_result.failure?
-          end
+          cascade_result = cascade_destroy_if_needed(record)
+          next cascade_result if cascade_result.failure?
 
           persist_write(record, method_name: :destroy)
         end
@@ -80,6 +53,33 @@ module Railsmith
       end
 
       private
+
+      def with_model_transaction
+        model_klass = model_class
+        return missing_model_class_result unless model_klass
+
+        with_transaction(model_klass) { yield(model_klass) }
+      end
+
+      def write_with_nested_support(record, write_method:, nested_mode:)
+        result = persist_write(record, method_name: write_method)
+        # Use block-return (next) so with_transaction sees the failure and rolls back.
+        return result if result.failure?
+
+        return result unless nested_writes?
+
+        nested_mode == :create ? write_nested_after_create(record) : write_nested_after_update(record)
+      end
+
+      def nested_writes?
+        self.class.respond_to?(:association_registry) && self.class.association_registry.any?
+      end
+
+      def cascade_destroy_if_needed(record)
+        return Result.success(value: record) unless nested_writes?
+
+        handle_cascading_destroy(record)
+      end
 
       def persist_write(record, method_name:)
         record.public_send(method_name)

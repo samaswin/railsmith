@@ -14,15 +14,14 @@ module Railsmith
       # @param type     [Class, Symbol]   expected type (e.g. String, Integer, :boolean)
       # @param required [Boolean]         whether absence is a validation error
       # @param default  [Object, Proc]    static value or lambda called to produce default
-      # @param in       [Array, nil]      allowed values whitelist
-      # @param transform [Proc, nil]      optional post-coercion transformation
-      def initialize(name, type, required: false, default: UNSET, in: nil, transform: nil) # rubocop:disable Metrics/ParameterLists
+      # @param options [Hash]            supported keys: :required, :default, :in, :transform
+      def initialize(name, type, **options)
         @name      = name.to_sym
         @type      = type
-        @required  = required
-        @default   = default
-        @in_values = binding.local_variable_get(:in)
-        @transform = transform
+        @required  = options.fetch(:required, false)
+        @default   = options.fetch(:default, UNSET)
+        @in_values = options[:in]
+        @transform = options[:transform]
         freeze
       end
 

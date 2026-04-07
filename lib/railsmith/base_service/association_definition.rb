@@ -12,18 +12,15 @@ module Railsmith
       # @param name         [Symbol, String]  association key
       # @param kind         [Symbol]          :has_many, :has_one, or :belongs_to
       # @param service      [Class]           Railsmith::BaseService subclass for the associated records
-      # @param foreign_key  [Symbol, nil]     explicit FK column; inferred when omitted
-      # @param dependent    [Symbol]          :destroy, :nullify, :restrict, or :ignore (default)
-      # @param optional     [Boolean]         belongs_to only — skip presence validation
-      # @param validate     [Boolean]         validate nested records (default: true)
-      def initialize(name, kind, service:, foreign_key: nil, dependent: :ignore, optional: false, validate: true) # rubocop:disable Metrics/ParameterLists
+      # @param options [Hash]            supported keys: :foreign_key, :dependent, :optional, :validate
+      def initialize(name, kind, service:, **options)
         @name         = name.to_sym
         @kind         = kind.to_sym
         @service_class = service
-        @foreign_key  = foreign_key&.to_sym
-        @dependent    = (dependent || :ignore).to_sym
-        @optional     = optional
-        @validate     = validate
+        @foreign_key  = options[:foreign_key]&.to_sym
+        @dependent    = (options.fetch(:dependent, :ignore) || :ignore).to_sym
+        @optional     = options.fetch(:optional, false)
+        @validate     = options.fetch(:validate, true)
         freeze
       end
 
@@ -35,19 +32,27 @@ module Railsmith
       # belongs_to:         FK lives on this record → association_name_id (e.g. customer_id)
       #
       # @param parent_model_class [Class, nil]  the parent model class (used for inference)
-      def inferred_foreign_key(parent_model_class = nil) # rubocop:disable Metrics/MethodLength
+      def inferred_foreign_key(parent_model_class = nil)
         return @foreign_key if @foreign_key
 
         case kind
         when :has_many, :has_one
-          model_name = parent_model_class&.name.to_s.split("::").last
-          model_name = model_name.gsub(/([A-Z]+)([A-Z][a-z])/, '\1_\2')
-                                 .gsub(/([a-z\d])([A-Z])/, '\1_\2')
-                                 .downcase
-          :"#{model_name}_id"
+          :"#{underscore_model_name(parent_model_class)}_id"
         when :belongs_to
           :"#{name}_id"
         end
+      end
+
+      private
+
+      def underscore_model_name(model_class)
+        return "" unless model_class
+
+        model_name = model_class.name.to_s.split("::").last
+        model_name
+          .gsub(/([A-Z]+)([A-Z][a-z])/, '\1_\2')
+          .gsub(/([a-z\d])([A-Z])/, '\1_\2')
+          .downcase
       end
     end
   end

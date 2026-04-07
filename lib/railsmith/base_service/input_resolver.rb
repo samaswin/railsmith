@@ -10,10 +10,41 @@ module Railsmith
     #     → Validate required    (missing required fields → validation_error)
     #     → Validate allowed     (in: constraint violations → validation_error)
     #     → Apply transforms     (optional post-coercion Proc)
-    #     → Filter undeclared    (drop keys not declared as inputs, when filtering is on)
-    #     → Return resolved hash or Result.failure
     #
+    module InputResolverHelpers
+      private
+
+      def type_coercion_failure(errors)
+        Result.failure(
+          error: Errors.validation_error(
+            message: "Type coercion failed",
+            details: { errors: errors }
+          )
+        )
+      end
+
+      def validation_failure(errors)
+        Result.failure(
+          error: Errors.validation_error(
+            message: "Validation failed",
+            details: { errors: errors }
+          )
+        )
+      end
+
+      def fetch_value(hash, name)
+        hash.key?(name) ? hash[name] : hash[name.to_s]
+      end
+
+      def blank?(value)
+        value.nil? || (value.respond_to?(:empty?) && value.empty?)
+      end
+    end
+
+    # Resolves and validates declared service inputs.
     class InputResolver
+      include InputResolverHelpers
+
       # @param registry [InputRegistry] the input definitions for this service
       # @param filter   [Boolean]       whether to drop undeclared keys (default: true)
       def initialize(registry, filter: true)
@@ -23,30 +54,27 @@ module Railsmith
 
       # Run the pipeline against +raw_params+.
       #
-      # @param raw_params [Hash]
       # @return [Railsmith::Result] success with resolved hash, or failure with validation_error
-      def resolve(raw_params) # rubocop:disable Metrics/MethodLength
+      def resolve(raw_params)
         return Result.success(value: raw_params) unless @registry.any?
 
-        input = extract(raw_params)
-        input = apply_defaults(input)
-
-        coerce_result = coerce_types(input)
-        return coerce_result if coerce_result.failure?
-
-        input = coerce_result.value
-
-        validate_result = validate(input)
-        return validate_result if validate_result.failure?
-
-        input = validate_result.value
-        input = apply_transforms(input)
-        input = filter_keys(input) if @filter
-
-        Result.success(value: input)
+        run_pipeline(extract(raw_params))
       end
 
       private
+
+      def run_pipeline(input)
+        input_with_defaults = apply_defaults(input)
+        coerce_result = coerce_types(input_with_defaults)
+        return coerce_result if coerce_result.failure?
+
+        validate_result = validate(coerce_result.value)
+        return validate_result if validate_result.failure?
+
+        resolved = apply_transforms(validate_result.value)
+        resolved = filter_keys(resolved) if @filter
+        Result.success(value: resolved)
+      end
 
       def extract(raw_params)
         raw_params.is_a?(Hash) ? raw_params.dup : {}
@@ -61,55 +89,51 @@ module Railsmith
         end
       end
 
-      def coerce_types(input) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
-        errors  = {}
-        coerced = {}
-
-        # Preserve non-declared keys (they'll be filtered later if needed)
-        input.each { |k, v| coerced[k] = v }
+      def coerce_types(input)
+        errors = {}
+        coerced = input.dup
 
         @registry.all.each do |defn|
-          value = fetch_value(input, defn.name)
-          next if value.nil?
-
-          begin
-            coerced[defn.name] = TypeCoercion.coerce(defn.name, value, defn.type)
-          rescue TypeCoercion::CoercionError => e
-            errors[defn.name] = e.message
-          end
+          coerce_one(defn, input, coerced, errors)
         end
 
         return Result.success(value: coerced) if errors.empty?
 
-        Result.failure(
-          error: Errors.validation_error(
-            message: "Type coercion failed",
-            details: { errors: errors }
-          )
-        )
+        type_coercion_failure(errors)
       end
 
-      def validate(input) # rubocop:disable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+      def coerce_one(defn, input, coerced, errors)
+        value = fetch_value(input, defn.name)
+        return if value.nil?
+
+        coerced[defn.name] = TypeCoercion.coerce(defn.name, value, defn.type)
+      rescue TypeCoercion::CoercionError => e
+        errors[defn.name] = e.message
+      end
+
+      def validate(input)
         errors = {}
 
         @registry.all.each do |defn|
-          value = fetch_value(input, defn.name)
-
-          if defn.required && blank?(value)
-            errors[defn.name] = "is required"
-          elsif !value.nil? && defn.in_values && !defn.in_values.include?(value)
-            errors[defn.name] = "must be one of: #{defn.in_values.join(", ")}"
-          end
+          validate_one(defn, input, errors)
         end
 
         return Result.success(value: input) if errors.empty?
 
-        Result.failure(
-          error: Errors.validation_error(
-            message: "Validation failed",
-            details: { errors: errors }
-          )
-        )
+        validation_failure(errors)
+      end
+
+      def validate_one(defn, input, errors)
+        value = fetch_value(input, defn.name)
+        if defn.required && blank?(value)
+          errors[defn.name] = "is required"
+          return
+        end
+
+        allowed_values = defn.in_values
+        return if value.nil? || allowed_values.nil? || allowed_values.include?(value)
+
+        errors[defn.name] = "must be one of: #{allowed_values.join(", ")}"
       end
 
       def apply_transforms(input)
@@ -129,15 +153,6 @@ module Railsmith
           sym = k.to_sym
           filtered[sym] = v if allowed.include?(sym)
         end
-      end
-
-      # Fetch a value from the input hash accepting both symbol and string keys.
-      def fetch_value(hash, name)
-        hash.key?(name) ? hash[name] : hash[name.to_s]
-      end
-
-      def blank?(value)
-        value.nil? || (value.respond_to?(:empty?) && value.empty?)
       end
     end
   end

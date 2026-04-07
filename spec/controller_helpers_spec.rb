@@ -2,6 +2,31 @@
 
 require "spec_helper"
 
+FakeRailsmithController = Class.new do
+  @rescue_handlers = []
+
+  def self.rescue_from(exception_class, &block)
+    @rescue_handlers << [exception_class, block]
+  end
+
+  class << self
+    attr_reader :rescue_handlers
+  end
+
+  include Railsmith::ControllerHelpers
+
+  def dispatch(exception)
+    handler = self.class.rescue_handlers.find { |klass, _| exception.is_a?(klass) }
+    instance_exec(exception, &handler[1]) if handler
+  end
+
+  attr_reader :rendered
+
+  def render(json:, status:)
+    @rendered = { json:, status: }
+  end
+end
+
 RSpec.describe Railsmith::ControllerHelpers do
   # ---------------------------------------------------------------------------
   # Minimal fake controller that supports rescue_from / render without Rails.
@@ -9,32 +34,8 @@ RSpec.describe Railsmith::ControllerHelpers do
   # rescue_from on the host class. We implement just enough of that interface
   # to exercise every line in controller_helpers.rb.
   # ---------------------------------------------------------------------------
-  def build_controller_class # rubocop:disable Metrics/MethodLength
-    Class.new do
-      @rescue_handlers = []
-
-      def self.rescue_from(exception_class, &block)
-        @rescue_handlers << [exception_class, block]
-      end
-
-      class << self
-        attr_reader :rescue_handlers
-      end
-
-      include Railsmith::ControllerHelpers
-
-      # Simulate the Rails rescue dispatch: find a matching handler and call it.
-      def dispatch(exception)
-        handler = self.class.rescue_handlers.find { |klass, _| exception.is_a?(klass) }
-        instance_exec(exception, &handler[1]) if handler
-      end
-
-      attr_reader :rendered
-
-      def render(json:, status:)
-        @rendered = { json:, status: }
-      end
-    end
+  def build_controller_class
+    FakeRailsmithController
   end
 
   # ---------------------------------------------------------------------------
