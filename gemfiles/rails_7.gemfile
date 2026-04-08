@@ -14,6 +14,8 @@ gem "nokogiri", "< 1.19"
 gem "erb", "< 5"
 # zeitwerk 2.7+ requires Ruby >= 3.2 (railties dependency)
 gem "zeitwerk", "< 2.7"
+# minitest 6+ requires Ruby >= 3.2 (matches CI Ruby 3.1 + Rails 7 appraisal gemfiles)
+gem "minitest", "< 6"
 
 gem "irb"
 gem "rake", "~> 13.0"

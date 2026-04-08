@@ -200,6 +200,7 @@ DEPENDENCIES
   connection_pool (< 3)
   erb (< 5)
   irb
+  minitest (< 6)
   nokogiri (< 1.19)
   railsmith!
   railties (~> 7.0)
