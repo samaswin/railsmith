@@ -12,3 +12,4 @@
 .claude/
 .cursor/
 railsmith-1.2.0.gem
+vendor/

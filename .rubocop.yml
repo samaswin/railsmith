@@ -1,3 +1,10 @@
+# Merge with default AllCops excludes (node_modules, tmp, vendor, .git) so a
+# custom Exclude does not drop them — without vendor/***, CI scans vendor/bundle
+# and can load nested gem configs that require optional cops (e.g. rubocop-rake).
+inherit_mode:
+  merge:
+    - Exclude
+
 AllCops:
   TargetRubyVersion: 3.1
   NewCops: enable
