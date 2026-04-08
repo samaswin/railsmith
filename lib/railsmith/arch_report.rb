@@ -73,6 +73,9 @@ module Railsmith
 
     def violation_to_h(violation)
       {
+        # Backwards-compatible key used by older consumers/tests.
+        type: violation.rule.to_s,
+        # Preferred key (more explicit than "type").
         rule: violation.rule.to_s,
         file: violation.file,
         line: violation.line,

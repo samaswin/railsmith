@@ -118,13 +118,13 @@ module Railsmith
           end
 
           def write_belongs_to_destroy(definition, item_id, parent_record, foreign_key)
-            if item_id
-              result = call_nested_service(definition, :destroy, params: { id: item_id })
-              return result if result.failure?
-            end
-
+            # Nullify the FK first so destroying the parent doesn't cascade
+            # back into destroying this record via dependent associations.
             parent_record.update!(foreign_key => nil)
-            Result.success(value: nil)
+
+            return Result.success(value: nil) unless item_id
+
+            call_nested_service(definition, :destroy, params: { id: item_id })
           end
 
           def write_belongs_to_upsert(definition, item_id, nested_params, parent_record, foreign_key)
