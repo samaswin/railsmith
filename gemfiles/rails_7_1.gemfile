@@ -24,4 +24,5 @@ gem "timecop", "~> 0.9"
 
 gem "rubocop", "~> 1.21"
 
-gem "sqlite3", ">= 2.1"
+# ActiveRecord < 7.2 activates sqlite3 ~> 1.4 in the adapter; sqlite3 2.x conflicts.
+gem "sqlite3", "~> 1.4"

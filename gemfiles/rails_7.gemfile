@@ -24,4 +24,5 @@ gem "timecop", "~> 0.9"
 
 gem "rubocop", "~> 1.21"
 
-gem "sqlite3", ">= 2.1"
+# Resolves to 7.0.x–7.1.x in some bundles; those adapters require sqlite3 ~> 1.4.
+gem "sqlite3", "~> 1.4"
