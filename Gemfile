@@ -15,6 +15,7 @@ gem "timecop", "~> 0.9"
 
 gem "rubocop", "~> 1.21"
 
+gem "actionpack", ">= 7.0", "< 9.0"
 gem "activerecord", ">= 7.0", "< 9.0"
 gem "sqlite3", ">= 2.1"
 

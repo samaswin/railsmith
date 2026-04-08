@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "spec_helper"
+require "bigdecimal"
 
 RSpec.describe "Railsmith::BaseService input DSL" do
   # -------------------------------------------------------------------------
@@ -254,6 +255,25 @@ RSpec.describe "Railsmith::BaseService input DSL" do
       result = svc2.call(action: :run, params: { code: "abc" }, context: {})
       expect(result).to be_success
       expect(result.value).to eq("ABC")
+    end
+
+    it "applies a custom coercion when input type is a symbol" do
+      Railsmith.configure do |c|
+        c.register_coercion(:money, ->(v) { BigDecimal(v.to_s) })
+      end
+
+      svc2 = custom_service do
+        input :price, :money
+
+        def run
+          params[:price]
+        end
+      end
+
+      result = svc2.call(action: :run, params: { price: "9.99" }, context: {})
+      expect(result).to be_success
+      expect(result.value).to be_a(BigDecimal)
+      expect(result.value).to eq(BigDecimal("9.99"))
     end
   end
 

@@ -8,6 +8,19 @@ module Railsmith
         module WriteNestedItem
           private
 
+          def truthy_destroy_flag?(flag)
+            [true, "true", "1", 1].include?(flag)
+          end
+
+          def extract_attributes(item_params)
+            attrs = item_params[:attributes] || item_params["attributes"] || {}
+            attrs.is_a?(Hash) ? attrs : {}
+          end
+
+          def call_nested_service(definition, action, params:)
+            definition.service_class.call(action: action, params: params, context: context)
+          end
+
           def write_nested_item(definition, item_params, foreign_key, foreign_value, _mode)
             return Result.success(value: nil) unless item_params.is_a?(Hash)
 
@@ -39,19 +52,6 @@ module Railsmith
 
           def nested_item_attributes(item_params, foreign_key, foreign_value)
             extract_attributes(item_params).merge(foreign_key => foreign_value)
-          end
-
-          def call_nested_service(definition, action, params:)
-            definition.service_class.call(action: action, params: params, context: context)
-          end
-
-          def truthy_destroy_flag?(flag)
-            [true, "true", "1", 1].include?(flag)
-          end
-
-          def extract_attributes(item_params)
-            attrs = item_params[:attributes] || item_params["attributes"] || {}
-            attrs.is_a?(Hash) ? attrs : {}
           end
         end
       end
