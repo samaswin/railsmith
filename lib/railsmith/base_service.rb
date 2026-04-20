@@ -25,7 +25,7 @@ module Railsmith
   require_relative "base_service/crud_transactions"
   require_relative "base_service/context_propagation"
 
-  # Base service entrypoint with explicit (non-hook) lifecycle.
+  # Base service entrypoint with lifecycle hook support.
   class BaseService
     include DupHelpers
     include Validation
@@ -35,6 +35,7 @@ module Railsmith
     include NestedWriter
     include CrudActions
     include BulkActions
+    include Railsmith::Hooks::Dsl
     prepend ContextPropagation
 
     include CrudModelResolution
@@ -113,7 +114,7 @@ module Railsmith
     private
 
     def execute_action(action:)
-      public_send(action)
+      run_lifecycle_hooks(action) { public_send(action) }
     end
 
     def normalize_result(value)

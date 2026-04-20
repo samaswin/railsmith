@@ -7,6 +7,73 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [Unreleased] — 1.3.0
+
+### Added — Lifecycle Hooks (Phase 2 of the "Pipelines & Hooks" release)
+
+- **`before` / `after` / `around` hook DSL** on every `Railsmith::BaseService` subclass. Hooks can target one or more action symbols in a single declaration and are evaluated in the service instance context so `params`, `context`, and service helpers are directly accessible:
+
+  ```ruby
+  class OrderService < Railsmith::BaseService
+    before :create, :update do
+      ensure_tenant_isolation!
+    end
+
+    after :create do |result|
+      EventBus.publish("order.created", result.value) if result.success?
+    end
+
+    around :charge do |action|
+      Metrics.time("order.charge") { action.call }
+    end
+  end
+  ```
+
+- **Conditional hooks** via `if:` / `unless:` options. Accepts a Symbol (method name on the instance), a Lambda (receives the instance), or a Proc (instance_exec'd in the service context). Declaring both `if:` and `unless:` on the same hook raises `ArgumentError`.
+
+- **Named hooks and `skip_hook`** — declare a hook with `name: :audit_log`, then suppress it in a subclass via `skip_before`, `skip_after`, `skip_around`, or the type-agnostic `skip_hook :audit_log`. Only named hooks can be skipped; this is enforced to keep skip intent explicit (see [ADR-0002](docs/adrs/0002-hook-inheritance-rules.md)).
+
+- **Hook inheritance** — subclasses inherit their parent's full hook chain via a deep-dup on `inherited`, matching the pattern used by `InputRegistry` and `AssociationRegistry`. Parent hooks run before child hooks within each phase; `after` hooks run in reverse (child → parent).
+
+- **Global hooks** via `Railsmith.configure`:
+
+  ```ruby
+  Railsmith.configure do |config|
+    config.before_action :create do
+      RateLimiter.check!(context[:actor_id])
+    end
+
+    config.around_action :charge, only: [:commerce] do |action|
+      CommerceSandbox.wrap { action.call }
+    end
+  end
+  ```
+
+  The `only:` option filters by the service's declared `domain :x` — global hooks only fire for matching services. Global hooks wrap class-level hooks in execution order (global before → class before → action → class after → global after).
+
+- **`Service.hooks_for(:action)`** — introspection helper that returns the effective `HookChain` for an action on a class, including inherited entries. Useful when debugging hook-ordering bugs far from the declaration site.
+
+- **`Railsmith::Hooks::AroundHookNotYieldedError`** — raised when an `around` hook returns without invoking its `action` block, catching the "forgot to call `action.call`" mistake that would otherwise silently swallow the action and any inner hooks.
+
+- **`Railsmith::Hooks` module**: `HookEntry` (frozen value object), `HookChain` (immutable ordered list), `HookRegistry` (per-class mutable wrapper around a chain), `Runner` (resolves and executes the sandwich), and `Dsl` (class-level DSL macros). Hook resolution is O(n) in declared hooks with no per-call allocations beyond the applicable-entries filter.
+
+### Changed
+
+- `Railsmith::BaseService#execute_action` now delegates to `run_lifecycle_hooks(action) { public_send(action) }`. Services that declare no hooks have unchanged semantics — the runner short-circuits on an empty chain.
+- `Railsmith::Configuration` gains a lazily-initialized `global_hooks` `HookRegistry` plus `before_action`, `after_action`, `around_action`, and `reset_global_hooks!` methods.
+
+### Documentation
+
+- New guide: [`docs/hooks.md`](docs/hooks.md) covering the full hook DSL, execution order, inheritance, global hooks, introspection, and common patterns (audit logging, event publishing, timing, authorization).
+- [RFC: Pipelines & Hooks](docs/rfcs/1.3.0-pipelines-and-hooks.md) and [ADR-0002: Hook Inheritance Rules](docs/adrs/0002-hook-inheritance-rules.md) are the canonical design references.
+
+### Sample app
+
+- `railsmith_sample/app/services/audited_post_service.rb` — demonstrates before/after/around hooks for audit logging, event publishing, and timing on a single service.
+- `railsmith_sample/app/services/rate_limited_service.rb` — demonstrates a named hook on a parent class with a subclass that opts out via `skip_hook`.
+
+---
+
 ## [1.2.0] — 2026-04-08
 
 ### Added — Declarative Inputs & Type Coercion
