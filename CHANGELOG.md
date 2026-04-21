@@ -7,7 +7,67 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [Unreleased] — 1.3.0
+## [1.3.0] — 2026-07-14
+
+### Added — Service Pipelines
+
+- **`Railsmith::Pipeline`** — sequential service composition with fail-fast semantics. Declare an ordered list of `step` entries; the runner walks them in order, merges each successful step's Hash `result.value` into accumulated params, and returns the last step's Result on overall success.
+
+  ```ruby
+  class CheckoutPipeline < Railsmith::Pipeline
+    domain :commerce
+
+    step :validate_cart,     service: CartService,         action: :validate
+    step :reserve_inventory, service: InventoryService,    action: :reserve,
+                             rollback: :unreserve
+    step :charge_payment,    service: PaymentService,      action: :charge,
+                             inputs: { amount: :cart_total }, rollback: :refund
+    step :create_order,      service: OrderService,        action: :create
+    step :send_confirmation, service: NotificationService, action: :send_receipt
+  end
+
+  result = CheckoutPipeline.call(params: { cart_id: 42, user_id: 7 }, context: ctx)
+  ```
+
+- **Param forwarding** — accumulated params start as the initial `params` hash and grow as each step's Hash `result.value` is merged in. Non-Hash values (ActiveRecord objects, etc.) are not merged. Use `inputs: { target_key => source_key }` on a step to rename keys before they reach that step's service; the rename is local to that step and does not mutate accumulated params. Missing source keys raise `Railsmith::Pipeline::ParamMappingError` with the step name and key.
+
+- **Fail-fast and failure metadata** — on the first step failure, the pipeline halts and returns a failure Result annotated with `:pipeline_name` and `:pipeline_step` in `result.meta`. Steps after the failing step are never invoked.
+
+- **Rollback / compensation** — `rollback:` on a step accepts a Symbol (action name on the same service) or a Proc (`->(step_result, context) { … }`). On failure the runner walks already-completed steps in reverse order and invokes each rollback. The rollback receives the params forwarded to the forward step merged with that step's Hash `result.value`. Rollback failures do not abort the compensation sequence; each failing rollback is collected in `result.meta[:rollback_failures]` as `{ step:, error: }`.
+
+- **Conditional steps** — `if:` / `unless:` on `step` accept an inline Proc (`->(params, ctx) { … }`) or a Symbol referencing a named guard declared at the pipeline level via `guard :name do |params, ctx| … end`. Only one of `if:` / `unless:` may be present on a step; declaring both raises `ArgumentError`. Skipped steps are not rolled back.
+
+- **Named guards** — `Pipeline.guard(:name) { |params, ctx| … }` registers a reusable predicate. Referencing an undefined guard symbol raises `Railsmith::Pipeline::GuardNotFoundError`.
+
+- **`on_failure_continue:`** — when `true` on a step, a failure from that step does not halt the pipeline; subsequent steps run as if the step was skipped. The step is not rolled back.
+
+- **Pipeline instrumentation** — four ActiveSupport instrumentation events are emitted per run:
+  - `pipeline.step.railsmith` — after each step; payload: `:pipeline`, `:step`, `:status`, `:duration`
+  - `pipeline.step.skipped.railsmith` — when a conditional step is skipped; payload: `:pipeline`, `:step`
+  - `pipeline.rollback.railsmith` — after each rollback handler; payload: `:pipeline`, `:step`, `:status`, `:duration`
+  - `pipeline.railsmith` — once at the end; payload: `:pipeline`, `:status`, `:duration`
+
+- **`Pipeline.call!`** — raising variant; raises `Railsmith::Failure` on the first step failure (same semantics as `BaseService.call!`).
+
+- **Pipeline inheritance** — subclasses receive deep copies of the parent's step list and guard registry at class definition time so additions on the subclass do not affect the parent.
+
+### Added — Result Chaining & Fluent API
+
+- **`Result#and_then { |value| … }`** — runs the block only on success, passing `result.value`. The block must return a `Result`. Returns the chained Result with accumulated meta merged in. Short-circuits and returns `self` on failure, enabling railway-oriented composition:
+
+  ```ruby
+  result = CartService.call(action: :validate, params: { cart_id: 42 }, context: ctx)
+    .and_then { |data| PaymentService.call(action: :charge, params: data, context: ctx) }
+    .and_then { |data| OrderService.call(action: :create, params: data, context: ctx) }
+  ```
+
+- **`Result#or_else { |error| … }`** — runs the block only on failure, passing `result.error`. The block must return a `Result`. Returns `self` on success. Useful for fallback or recovery patterns.
+
+- **`Result#on_success { |value| … }`** — side-effect callback invoked only on success; always returns `self`. Intended for logging, events, and metrics without altering the chain.
+
+- **`Result#on_failure { |error| … }`** — side-effect callback invoked only on failure; always returns `self`.
+
+- **Meta propagation in chains** — `and_then` and `or_else` merge the caller's `meta` into the returned Result so request IDs and pipeline metadata are not lost across chain boundaries.
 
 ### Added — Lifecycle Hooks (Phase 2 of the "Pipelines & Hooks" release)
 
@@ -67,10 +127,25 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - New guide: [`docs/hooks.md`](docs/hooks.md) covering the full hook DSL, execution order, inheritance, global hooks, introspection, and common patterns (audit logging, event publishing, timing, authorization).
 - [RFC: Pipelines & Hooks](docs/rfcs/1.3.0-pipelines-and-hooks.md) and [ADR-0002: Hook Inheritance Rules](docs/adrs/0002-hook-inheritance-rules.md) are the canonical design references.
 
+### Added — Generators & Tooling
+
+- **`rails g railsmith:pipeline NAME`** — scaffolds a `Railsmith::Pipeline` subclass under `app/pipelines/` with a matching spec under `spec/pipelines/`. The generated class includes commented-out examples for `step`, `rollback:`, `if:`, and `guard`.
+
+- **`rake railsmith:pipelines`** — lists all `Railsmith::Pipeline` subclasses discovered in the application along with their declared steps (name, service, action, and any rollback or condition options).
+
+- **`rails g railsmith:model_service` pipeline registration** — the generator accepts an optional `--pipeline=CheckoutPipeline` flag that emits a commented-out `step` declaration in the target pipeline class when the pipeline file already exists, making it easier to wire a new service into an existing workflow.
+
+### Documentation
+
+- New guide: [`docs/pipelines.md`](docs/pipelines.md) — full walkthrough of the Pipeline DSL with the CheckoutPipeline worked example, param forwarding, rollback, conditional steps, instrumentation, and best practices.
+- [`docs/hooks.md`](docs/hooks.md) — existing guide; covers the full hook DSL, execution order, inheritance, global hooks, introspection, and common patterns (audit logging, event publishing, timing, authorization).
+- [RFC: Pipelines & Hooks](docs/rfcs/1.3.0-pipelines-and-hooks.md), [ADR-0001: Rollback Ordering](docs/adrs/0001-rollback-ordering.md), and [ADR-0003: Pipeline Context Propagation](docs/adrs/0003-pipeline-context-propagation.md) are the canonical design references for pipeline internals.
+
 ### Sample app
 
 - `railsmith_sample/app/services/audited_post_service.rb` — demonstrates before/after/around hooks for audit logging, event publishing, and timing on a single service.
 - `railsmith_sample/app/services/rate_limited_service.rb` — demonstrates a named hook on a parent class with a subclass that opts out via `skip_hook`.
+- `railsmith_sample/app/pipelines/checkout_pipeline.rb` — end-to-end CheckoutPipeline smoke test exercising param forwarding, rollback, and conditional coupon step.
 
 ---
 
@@ -418,6 +493,7 @@ First stable release. Public DSL and result contract are now frozen.
 
 Internal bootstrap release. Gem skeleton, CI baseline, and initial service scaffolding. Not intended for production use.
 
+[1.3.0]: https://github.com/samaswin/railsmith/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/samaswin/railsmith/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/samaswin/railsmith/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/samaswin/railsmith/releases/tag/v1.0.0

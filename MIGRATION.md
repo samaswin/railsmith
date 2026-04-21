@@ -1,5 +1,140 @@
 # Migration Guide
 
+## Upgrading from 1.2.0 to 1.3.0
+
+All changes in 1.3.0 are **additive and backward-compatible**. Every service and pipeline written for 1.2.0 continues to work without modification.
+
+---
+
+### Service Pipelines (additive, opt-in)
+
+`Railsmith::Pipeline` is a new base class for composing multiple services into a sequential workflow. It is entirely optional — existing services and call sites are unaffected.
+
+```ruby
+class CheckoutPipeline < Railsmith::Pipeline
+  domain :commerce
+
+  step :validate_cart,     service: CartService,      action: :validate
+  step :charge_payment,    service: PaymentService,   action: :charge,
+                           rollback: :refund
+  step :create_order,      service: OrderService,     action: :create
+end
+
+result = CheckoutPipeline.call(params: { cart_id: 42 }, context: ctx)
+```
+
+See [docs/pipelines.md](docs/pipelines.md) for the full reference.
+
+**No migration required.** Pipelines are opt-in.
+
+---
+
+### Lifecycle Hooks (additive, opt-in)
+
+`before`, `after`, and `around` hooks are available on every `Railsmith::BaseService` subclass. They are evaluated in the service instance context so `params`, `context`, and service helpers are directly accessible.
+
+```ruby
+class OrderService < Railsmith::BaseService
+  before :create do
+    AuditLog.record(actor: context[:actor_id], service: self.class.name)
+  end
+
+  after :create do |result|
+    EventBus.publish("order.created", result.value) if result.success?
+  end
+end
+```
+
+Hook execution order:
+
+```
+global before hooks → parent before hooks → child before hooks
+  → around hooks (outermost → innermost)
+    → action
+  → around hooks unwind
+→ child after hooks → parent after hooks → global after hooks
+```
+
+The order applies within each service call independently of pipelines.
+
+**Hook inheritance note (the only non-obvious behaviour):** hook chains are deep-copied from parent to subclass **at class definition time**, not lazily. This means:
+
+- Adding a hook to a parent class **after** a subclass has been defined does **not** propagate to the subclass.
+- This is intentional (see [ADR-0002](docs/adrs/0002-hook-inheritance-rules.md)) and consistent with how `InputRegistry` and `AssociationRegistry` work.
+
+If you have code that dynamically modifies a parent's hook registry at runtime, it will not affect already-defined subclasses. Declare hooks at class load time.
+
+**No migration required.** Services that declare no hooks have unchanged semantics — the runner short-circuits on an empty chain with no overhead beyond a nil check.
+
+---
+
+### Global hooks (additive, opt-in)
+
+`Railsmith.configure` gains three new methods for cross-cutting hooks:
+
+```ruby
+Railsmith.configure do |config|
+  config.before_action :create do
+    RateLimiter.check!(context[:actor_id])
+  end
+
+  config.around_action :charge, only: [:commerce] do |action|
+    CommerceSandbox.wrap { action.call }
+  end
+end
+```
+
+**Initializer note:** if you reset `Railsmith.configuration` between tests (e.g. via `Railsmith.configure { |c| … }` in a `before` block), call `Railsmith.configuration.reset_global_hooks!` to clear any global hooks registered in that configure block. Without it, hooks accumulate across test examples.
+
+**No migration required.** Global hooks default to an empty registry.
+
+---
+
+### Result chaining (additive, opt-in)
+
+Four new methods are available on every `Railsmith::Result`:
+
+| Method | When called | Returns |
+|--------|-------------|---------|
+| `and_then { \|value\| … }` | Only on success | Chained Result (block must return a Result) |
+| `or_else { \|error\| … }` | Only on failure | Chained Result (block must return a Result) |
+| `on_success { \|value\| … }` | Only on success | `self` (side-effect only) |
+| `on_failure { \|error\| … }` | Only on failure | `self` (side-effect only) |
+
+These are purely additive — no existing `Result` behaviour changes.
+
+**No migration required.**
+
+---
+
+### Generator additions (additive)
+
+Two new generators are available:
+
+```bash
+rails generate railsmith:pipeline Checkout
+# creates app/pipelines/checkout_pipeline.rb + spec/pipelines/checkout_pipeline_spec.rb
+
+rake railsmith:pipelines
+# lists all discovered Pipeline subclasses and their steps
+```
+
+These do not affect existing generators or generated files.
+
+---
+
+### Upgrade steps for 1.2.0 → 1.3.0
+
+1. Update `Gemfile`: `gem "railsmith", "~> 1.3"`
+2. Run `bundle install`.
+3. Run `bundle exec rspec` — all existing specs should pass with zero changes.
+4. Opt-in to hooks on services where you want audit logging, event publishing, or timing.
+5. Opt-in to `Railsmith::Pipeline` for multi-step workflows that need rollback or instrumentation.
+6. Use `Result#and_then` / `#or_else` for lightweight 2–3 step chaining without a full pipeline.
+7. Deploy.
+
+---
+
 ## Upgrading from 1.1.0 to 1.2.0
 
 All changes in 1.2.0 are **additive and backward-compatible**. Every service written for 1.1.0 continues to work without modification.

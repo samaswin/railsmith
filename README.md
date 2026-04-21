@@ -136,6 +136,95 @@ See [docs/associations.md](docs/associations.md) for the full reference.
 
 ---
 
+## Service Pipelines
+
+Chain multiple services into a sequential workflow with fail-fast semantics, automatic param forwarding, rollback/compensation, conditional steps, and built-in instrumentation.
+
+```ruby
+class CheckoutPipeline < Railsmith::Pipeline
+  domain :commerce
+
+  step :validate_cart,     service: CartService,         action: :validate
+  step :reserve_inventory, service: InventoryService,    action: :reserve,
+                           rollback: :unreserve
+  step :charge_payment,    service: PaymentService,      action: :charge,
+                           inputs: { amount: :cart_total }, rollback: :refund
+  step :create_order,      service: OrderService,        action: :create
+  step :send_confirmation, service: NotificationService, action: :send_receipt,
+                           on_failure_continue: true
+end
+
+result = CheckoutPipeline.call(params: { cart_id: 42, user_id: 7 }, context: ctx)
+result.meta[:pipeline_step]  # => :charge_payment (on failure)
+```
+
+Each step's Hash `result.value` is merged into accumulated params so the next step receives all data gathered so far. On failure, completed steps are rolled back in reverse order. Conditional steps (`if:` / `unless:`) are skipped cleanly without affecting the rollback sequence.
+
+See [docs/pipelines.md](docs/pipelines.md) for the full reference.
+
+---
+
+## Lifecycle Hooks
+
+Attach `before`, `after`, and `around` callbacks to any service action for cross-cutting concerns — audit logging, event publishing, metrics, authorization:
+
+```ruby
+class OrderService < Railsmith::BaseService
+  model Order
+
+  before :create, :update, :destroy, name: :audit_log do
+    AuditLog.record(actor: context[:actor_id], service: self.class.name)
+  end
+
+  after :create do |result|
+    EventBus.publish("order.created", result.value) if result.success?
+  end
+
+  around :charge do |action|
+    Metrics.time("order.charge") { action.call }
+  end
+end
+```
+
+Apply hooks globally across all services (or all services in a domain) via `Railsmith.configure`:
+
+```ruby
+Railsmith.configure do |config|
+  config.before_action :create do
+    RateLimiter.check!(context[:actor_id])
+  end
+
+  config.around_action :charge, only: [:commerce] do |action|
+    CommerceSandbox.wrap { action.call }
+  end
+end
+```
+
+See [docs/hooks.md](docs/hooks.md) for the full reference.
+
+---
+
+## Result Chaining
+
+Compose services without a full pipeline using the fluent Result API:
+
+```ruby
+result = CartService.call(action: :validate, params: { cart_id: 42 }, context: ctx)
+  .and_then { |data| PaymentService.call(action: :charge, params: data, context: ctx) }
+  .and_then { |data| OrderService.call(action: :create, params: data, context: ctx) }
+  .on_success { |data| EventBus.publish("order.created", data) }
+  .on_failure { |err|  ErrorTracker.capture(err) }
+```
+
+| Method | Fires when | Returns |
+|--------|-----------|---------|
+| `and_then { \|value\| }` | Success only | Chained Result |
+| `or_else { \|error\| }` | Failure only | Chained Result |
+| `on_success { \|value\| }` | Success only | `self` (side-effect) |
+| `on_failure { \|error\| }` | Failure only | `self` (side-effect) |
+
+---
+
 ## `call!` — Raising Variant
 
 `call!` raises `Railsmith::Failure` instead of returning a failure result. Use it in controllers with `rescue_from`:
@@ -178,6 +267,8 @@ See [docs/call-bang.md](docs/call-bang.md) for the full reference.
 | `rails g railsmith:model_service Order --associations` | Service with association DSL (introspects model associations) |
 | `rails g railsmith:model_service Billing::Invoice --domain=Billing` | `app/domains/billing/services/invoice_service.rb` |
 | `rails g railsmith:operation Billing::Invoices::Create` | `app/domains/billing/invoices/create.rb` |
+| `rails g railsmith:pipeline Checkout` | `app/pipelines/checkout_pipeline.rb` + spec |
+| `rake railsmith:pipelines` | List all pipeline classes and their declared steps |
 
 ---
 
@@ -313,10 +404,12 @@ See [Migration](MIGRATION.md#embedding-architecture-checks-from-ruby) for option
 - [Quickstart](docs/quickstart.md) — install, generate, first call
 - [Inputs](docs/inputs.md) — declarative input DSL, type coercion, filtering, custom coercions
 - [Associations](docs/associations.md) — association DSL, eager loading, nested CRUD, cascading destroy
+- [Pipelines](docs/pipelines.md) — sequential service composition, param forwarding, rollback, conditional steps, instrumentation
+- [Hooks](docs/hooks.md) — before/after/around DSL, conditional hooks, inheritance, global hooks, introspection
 - [call!](docs/call-bang.md) — raising variant, controller integration, `ControllerHelpers`
 - [Cookbook](docs/cookbook.md) — CRUD, bulk, inputs, associations, domain context, error mapping, observability
 - [Legacy Adoption Guide](docs/legacy-adoption.md) — incremental migration strategy
-- [Migration](MIGRATION.md) — upgrading from 1.0.x to 1.2.x (and earlier releases)
+- [Migration](MIGRATION.md) — upgrading from any 1.x release
 - [Changelog](CHANGELOG.md)
 
 ---
