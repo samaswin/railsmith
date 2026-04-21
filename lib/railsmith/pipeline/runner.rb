@@ -48,10 +48,19 @@ module Railsmith
         last_result = nil
 
         @pipeline_class.step_definitions.each do |step_def|
+          if step_def.skip?(@accumulated_params, @context, @pipeline_class.guards)
+            emit_skipped_event(step_def)
+            next
+          end
+
           params_for_step = step_def.resolve_params(@accumulated_params)
           step_result     = execute_step(step_def, params_for_step)
 
           if step_result.failure?
+            if step_def.continue_on_failure?
+              next
+            end
+
             rollback_failures = run_rollbacks
             return wrap_failure(step_result, step_def, rollback_failures)
           end
@@ -67,6 +76,13 @@ module Railsmith
 
         # An empty pipeline succeeds with nil value; non-empty returns last step's result.
         last_result || Result.success(value: nil)
+      end
+
+      def emit_skipped_event(step_def)
+        Instrumentation.instrument("pipeline.step.skipped", {
+          pipeline: @pipeline_class.pipeline_name,
+          step:     step_def.name
+        })
       end
 
       def execute_step(step_def, params)

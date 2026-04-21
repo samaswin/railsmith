@@ -9,5 +9,13 @@ module Railsmith
               "which is not present in accumulated params")
       end
     end
+
+    # Raised when a step's if:/unless: references a guard name not registered on
+    # the pipeline via the guard helper.
+    class GuardNotFoundError < StandardError
+      def initialize(guard_name)
+        super("Pipeline guard :#{guard_name} is not defined on this pipeline")
+      end
+    end
   end
 end
