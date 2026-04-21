@@ -169,6 +169,16 @@ module Railsmith
                    default: false,
                    desc: "Generate association DSL by introspecting the model's associations"
 
+      class_option :pipeline,
+                   type: :string,
+                   default: nil,
+                   desc: "Register this service as a step in the given pipeline class (e.g. CheckoutPipeline)"
+
+      class_option :pipeline_action,
+                   type: :string,
+                   default: nil,
+                   desc: "Action name to use when registering the step (defaults to first declared action, or :call)"
+
       def create_model_service
         if File.exist?(File.join(destination_root, target_file)) && !options[:force]
           say_status(
@@ -180,6 +190,43 @@ module Railsmith
         end
 
         template "model_service.rb.tt", target_file
+      end
+
+      def register_with_pipeline
+        return if options[:pipeline].to_s.strip.empty?
+
+        pipeline_path = locate_pipeline_file(options[:pipeline])
+        unless pipeline_path
+          say_status(
+            :warning,
+            "Could not find pipeline file for #{options[:pipeline]} — add the step manually",
+            :yellow
+          )
+          return
+        end
+
+        action_name = options[:pipeline_action].to_s.strip
+        action_name = resolver.declared_actions.first || "call" if action_name.empty?
+
+        step_name = class_name.split("::").last.underscore
+        full_svc   = (enclosing_modules + [service_class_name.split("::").last]).join("::")
+        step_line  = "  step :#{step_name}, service: #{full_svc}, action: :#{action_name}\n"
+
+        insert_into_file pipeline_path, step_line, before: /\n#{Regexp.escape(class_indent)}end\n?\z/m
+      end
+
+      private
+
+      def locate_pipeline_file(pipeline_class_name)
+        underscore_name = pipeline_class_name.split("::").last.underscore
+        underscore_name = "#{underscore_name}_pipeline" unless underscore_name.end_with?("_pipeline")
+
+        candidates = [
+          File.join(destination_root, "app/pipelines/#{underscore_name}.rb"),
+          *Dir.glob(File.join(destination_root, "app/domains/**/pipelines/#{underscore_name}.rb"))
+        ]
+
+        candidates.find { |f| File.exist?(f) }
       end
     end
 

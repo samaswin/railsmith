@@ -1,0 +1,12 @@
+# frozen_string_literal: true
+
+require "spec_helper"
+
+RSpec.describe <%= qualified_pipeline_class_name %> do
+  describe ".call" do
+    it "returns a Result" do
+      result = described_class.call(params: {})
+      expect(result).to be_a(Railsmith::Result)
+    end
+  end
+end

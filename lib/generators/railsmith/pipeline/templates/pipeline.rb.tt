@@ -1,0 +1,23 @@
+# frozen_string_literal: true
+
+<% enclosing_modules.each do |mod| -%>
+module <%= mod %>
+<% end -%>
+<%= class_indent %>class <%= pipeline_class_name %> < Railsmith::Pipeline
+  # Declare steps in execution order. Each step invokes service.call(action:, params:).
+  # Params from the previous step's result.value (when a Hash) are merged forward automatically.
+  #
+  # Examples:
+  #
+  #   step :validate,         service: SomeService,    action: :validate
+  #   step :reserve,          service: AnotherService, action: :reserve,
+  #                           rollback: :unreserve
+  #   step :charge,           service: PaymentService, action: :charge,
+  #                           inputs: { amount: :cart_total }, rollback: :refund
+  #   step :notify,           service: NotifyService,  action: :send_receipt,
+  #                           if: ->(params, _ctx) { params[:notify] }
+
+<%= class_indent %>end
+<% (enclosing_modules.length - 1).downto(0) do -%>
+end
+<% end -%>
