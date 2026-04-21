@@ -18,9 +18,10 @@ module Railsmith
   #
   #   class CheckoutPipeline < Railsmith::Pipeline
   #     step :validate_cart,      service: CartService,         action: :validate
-  #     step :reserve_inventory,  service: InventoryService,    action: :reserve
+  #     step :reserve_inventory,  service: InventoryService,    action: :reserve,
+  #                               rollback: :unreserve
   #     step :charge_payment,     service: PaymentService,      action: :charge,
-  #                               inputs: { amount: :cart_total }
+  #                               inputs: { amount: :cart_total }, rollback: :refund
   #     step :send_confirmation,  service: NotificationService, action: :send_receipt
   #   end
   #
@@ -54,16 +55,32 @@ module Railsmith
     class << self
       # Declare a step in execution order.
       #
-      # @param name    [Symbol]        identifier used in events and error meta
-      # @param service [Class]         a Railsmith::BaseService subclass
-      # @param action  [Symbol]        action forwarded to service.call(action:)
-      # @param inputs  [Hash, nil]     optional { target_key => source_key } renames
-      def step(name, service:, action:, inputs: nil)
+      # @param name     [Symbol]          identifier used in events and error meta
+      # @param service  [Class]           a Railsmith::BaseService subclass
+      # @param action   [Symbol]          action forwarded to service.call(action:)
+      # @param inputs   [Hash, nil]       optional { target_key => source_key } renames
+      # @param rollback [Symbol, Proc, nil]
+      #   Compensation handler invoked (in reverse step order) when a later step fails.
+      #
+      #   Symbol — treated as an action name on the same service class. The service is
+      #   invoked via service.call(action: rollback, params:, context:) where params
+      #   is the params forwarded to the forward step merged with that step's result.value
+      #   (when it is a Hash), giving the rollback handler all the IDs it needs to undo work.
+      #
+      #   Proc — called as rollback.call(step_result, context) where step_result is the
+      #   Result returned by the forward step and context is the pipeline Context.
+      #
+      #   Idempotency: rollback handlers SHOULD be idempotent. The pipeline makes no
+      #   guarantees about exactly-once delivery — a rollback may be retried on infra
+      #   failure. Design handlers to be safe when called multiple times (e.g. check
+      #   whether a reservation still exists before cancelling it).
+      def step(name, service:, action:, inputs: nil, rollback: nil)
         step_definitions << StepDefinition.new(
-          name:    name.to_sym,
-          service: service,
-          action:  action.to_sym,
-          inputs:  inputs
+          name:     name.to_sym,
+          service:  service,
+          action:   action.to_sym,
+          inputs:   inputs,
+          rollback: rollback
         )
       end
 

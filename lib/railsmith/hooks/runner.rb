@@ -68,8 +68,11 @@ module Railsmith
         end
       end
 
+      # Run after-hooks in reverse chain order so class-level hooks fire first
+      # and global (outermost) hooks fire last — matching the "global wraps class"
+      # sandwich model used for before-hooks and around-hooks.
       def run_afters(entries, result)
-        entries.each do |entry|
+        entries.reverse_each do |entry|
           instance.instance_exec(result, &entry.block)
         end
       end

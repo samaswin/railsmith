@@ -72,7 +72,7 @@ RSpec.describe "Railsmith.configure global hooks" do
 
     local.call(action: :create, params: {}, context: {})
 
-    expect(trace).to eq(%i[global_in class_in global_out class_out])
+    expect(trace).to eq(%i[global_in class_in class_out global_out])
   end
 
   describe "only: domain filter" do
