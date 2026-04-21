@@ -45,6 +45,30 @@ module Railsmith
       error.code
     end
 
+    def and_then
+      return self if failure?
+
+      chained = yield(@value)
+      merge_meta(chained)
+    end
+
+    def or_else
+      return self if success?
+
+      chained = yield(@error)
+      merge_meta(chained)
+    end
+
+    def on_success
+      yield(@value) if success?
+      self
+    end
+
+    def on_failure
+      yield(@error) if failure?
+      self
+    end
+
     def to_h
       if success?
         { success: true, value:, meta: }
@@ -55,6 +79,19 @@ module Railsmith
 
     def as_json(*)
       to_h
+    end
+
+    private
+
+    def merge_meta(chained)
+      merged = @meta.merge(chained.meta)
+      return chained if merged == chained.meta
+
+      if chained.success?
+        self.class.success(value: chained.value, meta: merged)
+      else
+        self.class.failure(error: chained.error, meta: merged)
+      end
     end
   end
 end
