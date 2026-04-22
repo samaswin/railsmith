@@ -120,12 +120,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ### Changed
 
 - `Railsmith::BaseService#execute_action` now delegates to `run_lifecycle_hooks(action) { public_send(action) }`. Services that declare no hooks have unchanged semantics — the runner short-circuits on an empty chain.
-- `Railsmith::Configuration` gains a lazily-initialized `global_hooks` `HookRegistry` plus `before_action`, `after_action`, `around_action`, and `reset_global_hooks!` methods.
-
-### Documentation
-
-- New guide: [`docs/hooks.md`](docs/hooks.md) covering the full hook DSL, execution order, inheritance, global hooks, introspection, and common patterns (audit logging, event publishing, timing, authorization).
-- [RFC: Pipelines & Hooks](docs/rfcs/1.3.0-pipelines-and-hooks.md) and [ADR-0002: Hook Inheritance Rules](docs/adrs/0002-hook-inheritance-rules.md) are the canonical design references.
+- `Railsmith::Configuration` gains a lazily-initialized `global_hooks` `HookRegistry` plus `before_action`, `after_action`, `around_action`, and `reset_global_hooks!` methods, and an `async_job_class` accessor for async nested association writes.
 
 ### Added — Generators & Tooling
 
@@ -135,17 +130,35 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 - **`rails g railsmith:model_service` pipeline registration** — the generator accepts an optional `--pipeline=CheckoutPipeline` flag that emits a commented-out `step` declaration in the target pipeline class when the pipeline file already exists, making it easier to wire a new service into an existing workflow.
 
-### Documentation
-
-- New guide: [`docs/pipelines.md`](docs/pipelines.md) — full walkthrough of the Pipeline DSL with the CheckoutPipeline worked example, param forwarding, rollback, conditional steps, instrumentation, and best practices.
-- [`docs/hooks.md`](docs/hooks.md) — existing guide; covers the full hook DSL, execution order, inheritance, global hooks, introspection, and common patterns (audit logging, event publishing, timing, authorization).
-- [RFC: Pipelines & Hooks](docs/rfcs/1.3.0-pipelines-and-hooks.md), [ADR-0001: Rollback Ordering](docs/adrs/0001-rollback-ordering.md), and [ADR-0003: Pipeline Context Propagation](docs/adrs/0003-pipeline-context-propagation.md) are the canonical design references for pipeline internals.
-
 ### Sample app
 
 - `railsmith_sample/app/services/audited_post_service.rb` — demonstrates before/after/around hooks for audit logging, event publishing, and timing on a single service.
 - `railsmith_sample/app/services/rate_limited_service.rb` — demonstrates a named hook on a parent class with a subclass that opts out via `skip_hook`.
 - `railsmith_sample/app/pipelines/checkout_pipeline.rb` — end-to-end CheckoutPipeline smoke test exercising param forwarding, rollback, and conditional coupon step.
+
+### Added — Request ID propagation (`railsmith_context`)
+
+- **`Railsmith::ControllerHelpers#railsmith_context`** — instance method that builds a `Railsmith::Context` with `request_id` from `request.request_id` (aligned with ActionDispatch / `X-Request-Id`). Extra keywords (`domain:`, `actor_id:`, etc.) are merged in; pass `request_id:` to override explicitly.
+- **`Context` unchanged** — explicit `request_id:` was already preserved; this release adds the controller glue so service instrumentation and `Result` metadata match upstream tracing without auto-generated UUIDs at the edge.
+
+### Added — Async nested association writes
+
+- **`async:` on `has_many` / `has_one`** — optional nested writes enqueued via ActiveJob **after** the parent commits instead of running inside the parent transaction. Not available on `belongs_to` (parent FK must be written synchronously).
+- **`AssociationDefinition` / `AssociationDsl`** — `async:` flag and validation: `async: true` cannot be combined with `dependent: :destroy`, `:nullify`, or `:restrict`.
+- **`Configuration#async_job_class`** — assign an `ActiveJob` subclass (for example `Railsmith::AsyncNestedWriteJob`); required whenever an association uses `async: true`, or nested writes raise `Railsmith::AsyncNotConfiguredError`.
+- **`Railsmith::AsyncNestedWriteJob`** — default job implementation that reloads the parent, rebuilds context from `context.to_h`, and runs the nested write for the given association (custom jobs may replace it with a compatible `perform` signature).
+- **Instrumentation** — `nested_write.enqueued.railsmith` when a job is enqueued; `async_nested_write.failed.railsmith` when the job rescues an error before re-raising (in addition to ActiveJob retry / discard behaviour).
+
+### Documentation
+
+- New guide: [`docs/pipelines.md`](docs/pipelines.md) — Pipeline DSL walkthrough (CheckoutPipeline example, param forwarding, rollback, conditional steps, instrumentation, best practices).
+- [`docs/hooks.md`](docs/hooks.md) — hook DSL, execution order, inheritance, global hooks, introspection, common patterns.
+- [RFC: Pipelines & Hooks](docs/rfcs/1.3.0-pipelines-and-hooks.md), [ADR-0001: Rollback Ordering](docs/adrs/0001-rollback-ordering.md), [ADR-0002: Hook Inheritance Rules](docs/adrs/0002-hook-inheritance-rules.md), [ADR-0003: Pipeline Context Propagation](docs/adrs/0003-pipeline-context-propagation.md) — design references.
+- [README](README.md) — request ID section, `async: true` in the association example, optional `async_job_class` in configuration sample.
+- [`docs/associations.md`](docs/associations.md) — `async:` option, why `dependent:` exists, async semantics, configuration, instrumentation.
+- [`docs/call-bang.md`](docs/call-bang.md) — `railsmith_context` and thread-local `request_id` pattern.
+- [`docs/quickstart.md`](docs/quickstart.md) — tracing note and associations link.
+- [`docs/cookbook.md`](docs/cookbook.md) — `Context.with` + `request.request_id`; async vs synchronous nested rollback.
 
 ---
 
