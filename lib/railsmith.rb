@@ -22,6 +22,11 @@ require_relative "railsmith/railtie" if defined?(Rails::Railtie)
 module Railsmith
   class Error < StandardError; end
 
+  # Raised when an association is declared with +async: true+ but
+  # +Railsmith.configuration.async_job_class+ has not been set. The service
+  # layer cannot enqueue a nested write without a configured ActiveJob class.
+  class AsyncNotConfiguredError < Error; end
+
   class << self
     attr_writer :configuration
 

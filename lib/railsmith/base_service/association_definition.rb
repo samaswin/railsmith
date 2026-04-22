@@ -7,12 +7,18 @@ module Railsmith
     # Stores the association name, kind (:has_many, :has_one, :belongs_to),
     # the associated service class, and options governing cascading behaviour.
     class AssociationDefinition
-      attr_reader :name, :kind, :service_class, :foreign_key, :dependent, :optional, :validate
+      # Dependent modes that imply cascading service-layer behavior on parent
+      # destruction. Async nested writes cannot honor these guarantees because
+      # the job runs after the parent transaction has committed, so combining
+      # them is rejected up-front.
+      ASYNC_INCOMPATIBLE_DEPENDENT = %i[destroy nullify restrict].freeze
+
+      attr_reader :name, :kind, :service_class, :foreign_key, :dependent, :optional, :validate, :async
 
       # @param name         [Symbol, String]  association key
       # @param kind         [Symbol]          :has_many, :has_one, or :belongs_to
       # @param service      [Class]           Railsmith::BaseService subclass for the associated records
-      # @param options [Hash]            supported keys: :foreign_key, :dependent, :optional, :validate
+      # @param options [Hash]            supported keys: :foreign_key, :dependent, :optional, :validate, :async
       def initialize(name, kind, service:, **options)
         @name         = name.to_sym
         @kind         = kind.to_sym
@@ -21,7 +27,21 @@ module Railsmith
         @dependent    = (options.fetch(:dependent, :ignore) || :ignore).to_sym
         @optional     = options.fetch(:optional, false)
         @validate     = options.fetch(:validate, true)
+        @async        = options.fetch(:async, false) ? true : false
+
+        if @async && ASYNC_INCOMPATIBLE_DEPENDENT.include?(@dependent)
+          raise ArgumentError,
+                "async: true is not compatible with dependent: #{@dependent.inspect} " \
+                "(cascading/child cleanup cannot be safely deferred past the parent transaction)"
+        end
+
         freeze
+      end
+
+      # Returns true when this association should be written in a background
+      # job rather than inline inside the parent's transaction.
+      def async?
+        @async
       end
 
       # Returns the FK column name (Symbol) for this association.

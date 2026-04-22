@@ -252,4 +252,58 @@ RSpec.describe "Railsmith::BaseService Association DSL" do
       expect(names).to contain_exactly(:lines, :header, :customer)
     end
   end
+
+  # =========================================================================
+  # 8. async: true
+  # =========================================================================
+
+  describe "async: true" do
+    it "defaults async to false" do
+      stub = stub_service
+      svc = Class.new(Railsmith::BaseService) { has_many :items, service: stub }
+      expect(svc.association_registry[:items].async).to be false
+      expect(svc.association_registry[:items].async?).to be false
+    end
+
+    it "stores async: true on has_many definitions" do
+      stub = stub_service
+      svc = Class.new(Railsmith::BaseService) { has_many :events, service: stub, async: true }
+      expect(svc.association_registry[:events].async).to be true
+      expect(svc.association_registry[:events].async?).to be true
+    end
+
+    it "stores async: true on has_one definitions" do
+      stub = stub_service
+      svc = Class.new(Railsmith::BaseService) { has_one :snapshot, service: stub, async: true }
+      expect(svc.association_registry[:snapshot].async?).to be true
+    end
+
+    it "raises when combined with dependent: :destroy" do
+      stub = stub_service
+      expect do
+        Class.new(Railsmith::BaseService) { has_many :items, service: stub, async: true, dependent: :destroy }
+      end.to raise_error(ArgumentError, /async: true is not compatible with dependent/)
+    end
+
+    it "raises when combined with dependent: :nullify" do
+      stub = stub_service
+      expect do
+        Class.new(Railsmith::BaseService) { has_many :items, service: stub, async: true, dependent: :nullify }
+      end.to raise_error(ArgumentError, /async: true is not compatible with dependent/)
+    end
+
+    it "raises when combined with dependent: :restrict" do
+      stub = stub_service
+      expect do
+        Class.new(Railsmith::BaseService) { has_many :items, service: stub, async: true, dependent: :restrict }
+      end.to raise_error(ArgumentError, /async: true is not compatible with dependent/)
+    end
+
+    it "permits async: true with default (:ignore) dependent" do
+      stub = stub_service
+      expect do
+        Class.new(Railsmith::BaseService) { has_many :items, service: stub, async: true }
+      end.not_to raise_error
+    end
+  end
 end

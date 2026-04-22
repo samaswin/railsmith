@@ -136,7 +136,76 @@ RSpec.describe Railsmith::ControllerHelpers do
   end
 
   # ---------------------------------------------------------------------------
-  # 4. Module structure
+  # 4. railsmith_context helper — request_id propagation
+  # ---------------------------------------------------------------------------
+
+  describe "#railsmith_context" do
+    # Minimal fake ActionDispatch::Request double — just the method we read.
+    let(:fake_request) do
+      Struct.new(:request_id).new("inbound-abc-123")
+    end
+
+    let(:controller_class) do
+      klass = Class.new do
+        @rescue_handlers = []
+        def self.rescue_from(exception_class, &block)
+          @rescue_handlers << [exception_class, block]
+        end
+        class << self
+          attr_reader :rescue_handlers
+        end
+        include Railsmith::ControllerHelpers
+
+        attr_accessor :request
+      end
+      klass
+    end
+
+    it "returns a Railsmith::Context" do
+      ctrl = controller_class.new
+      ctrl.request = fake_request
+      expect(ctrl.railsmith_context).to be_a(Railsmith::Context)
+    end
+
+    it "copies request.request_id onto the Context" do
+      ctrl = controller_class.new
+      ctrl.request = fake_request
+      expect(ctrl.railsmith_context.request_id).to eq("inbound-abc-123")
+    end
+
+    it "passes through an explicit domain:" do
+      ctrl = controller_class.new
+      ctrl.request = fake_request
+      expect(ctrl.railsmith_context(domain: :commerce).domain).to eq(:commerce)
+    end
+
+    it "passes through arbitrary extras onto the Context" do
+      ctrl = controller_class.new
+      ctrl.request = fake_request
+      ctx = ctrl.railsmith_context(domain: :commerce, actor_id: 42, tenant_id: 7)
+      expect(ctx[:actor_id]).to eq(42)
+      expect(ctx[:tenant_id]).to eq(7)
+      expect(ctx.request_id).to eq("inbound-abc-123")
+    end
+
+    it "honors an explicit request_id passed in extras" do
+      ctrl = controller_class.new
+      ctrl.request = fake_request
+      ctx = ctrl.railsmith_context(request_id: "caller-override")
+      expect(ctx.request_id).to eq("caller-override")
+    end
+
+    it "auto-generates a request_id when no request is available" do
+      # Controller that does not respond to #request at all.
+      ctrl = Class.new do
+        include Railsmith::ControllerHelpers
+      end.new
+      expect(ctrl.railsmith_context.request_id).to match(/\A[0-9a-f-]{36}\z/)
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # 5. Module structure
   # ---------------------------------------------------------------------------
 
   describe "module structure" do

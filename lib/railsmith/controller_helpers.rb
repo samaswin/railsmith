@@ -38,5 +38,37 @@ module Railsmith
         end
       end
     end
+
+    # Builds a {Railsmith::Context} seeded with the incoming request's id,
+    # so every service invoked from this controller shares the same
+    # +request_id+ as the +X-Request-Id+ header ActionDispatch observed.
+    #
+    # @example Propagating the request id into a service call
+    #   class OrdersController < ApplicationController
+    #     include Railsmith::ControllerHelpers
+    #
+    #     def create
+    #       result = OrderService.call!(
+    #         action: :create,
+    #         params: { attributes: order_params },
+    #         context: railsmith_context(domain: :commerce, actor_id: current_user.id)
+    #       )
+    #       render json: result.value, status: :created
+    #     end
+    #   end
+    #
+    # @param domain [Symbol, String, nil] bounded-context key for the call
+    # @param extras [Hash] arbitrary extra keys (actor_id, tenant_id, etc.)
+    # @return [Railsmith::Context]
+    def railsmith_context(domain: nil, **extras)
+      request_id = extras.delete(:request_id)
+      request_id ||= request.request_id if respond_to?(:request) && request.respond_to?(:request_id)
+
+      Railsmith::Context.new(
+        domain: domain,
+        request_id: request_id,
+        **extras
+      )
+    end
   end
 end

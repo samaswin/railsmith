@@ -96,6 +96,8 @@ UserService.call(
 )
 ```
 
+In controllers, auto-generated `request_id` values do not match the HTTP `X-Request-Id` / `request.request_id` that ActionDispatch sets. After `include Railsmith::ControllerHelpers`, use `railsmith_context(...)` so services share the same id as your load balancer or upstream caller, or set `Railsmith::Context.with(..., request_id: request.request_id)` once per request — see [call! / ControllerHelpers](call-bang.md#request-id-and-railsmith_context).
+
 ---
 
 ## 5. Result Contract at a Glance
@@ -122,5 +124,6 @@ result.error.to_h      # => { code: ..., message: ..., details: ... }
 ## 6. Next Steps
 
 - **[Cookbook](cookbook.md)** — CRUD customization, bulk operations, domain context, thread-local context, error mapping, custom actions.
+- **[Associations](associations.md)** — nested CRUD, `dependent:` modes, optional async nested writes.
 - **[Legacy Adoption Guide](legacy-adoption.md)** — Incrementally migrate an existing Rails app to Railsmith.
-- **[Migration Guide](../MIGRATION.md)** — Upgrade notes from 1.0.0 to 1.1.0.
+- **[Migration Guide](../MIGRATION.md)** — Upgrade notes between releases.

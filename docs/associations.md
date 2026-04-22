@@ -1,6 +1,6 @@
 # Association Support
 
-Railsmith v1.2.0 adds first-class association handling to services: eager loading, nested creates and updates, and cascading destroy — all within a single transaction.
+Railsmith provides first-class association handling on services: eager loading, nested creates and updates, optional **async** nested writes, and cascading destroy. Synchronous nested work runs in the parent’s transaction; async associations enqueue work after commit.
 
 ---
 
@@ -14,6 +14,7 @@ class OrderService < Railsmith::BaseService
   domain :commerce
 
   has_many   :line_items,       service: LineItemService, dependent: :destroy
+  has_many   :audit_events,     service: AuditEventService, async: true
   has_one    :shipping_address, service: AddressService,  dependent: :nullify
   belongs_to :customer,         service: CustomerService, optional: true
 end
@@ -27,8 +28,9 @@ All three macros accept a `service:` option (required) pointing to the associate
 |--------|------|---------|-------------|
 | `service:` | Class | required | service class for associated records |
 | `foreign_key:` | Symbol | inferred | FK column on the child; defaults to `#{parent_model}_id` (e.g. `order_id`) |
-| `dependent:` | Symbol | `:ignore` | cascade behaviour on parent destroy |
+| `dependent:` | Symbol | `:ignore` | cascade behaviour on parent destroy (see [Why `dependent:` exists](#why-dependent-exists)) |
 | `validate:` | Boolean | `true` | validate nested records before writing |
+| `async:` | Boolean | `false` | when `true`, nested writes for this association run in a background job after the parent commits ([details](#async-nested-writes)) |
 
 ### `belongs_to` options
 
@@ -37,6 +39,25 @@ All three macros accept a `service:` option (required) pointing to the associate
 | `service:` | Class | required | service class for the parent record |
 | `foreign_key:` | Symbol | inferred | FK on this record; defaults to `#{association_name}_id` (e.g. `customer_id`) |
 | `optional:` | Boolean | `false` | skip presence validation for the FK |
+
+`belongs_to` does not support `async:` (the parent row must exist before the FK is written).
+
+---
+
+## Why `dependent:` exists
+
+`dependent:` on `has_many` / `has_one` controls what happens to child records when the **parent** is destroyed. Without it, destroying a parent can leave orphaned rows unless the database enforces `ON DELETE CASCADE` (or similar).
+
+Railsmith’s `dependent:` is service-layer compensation: child work runs **through the associated service**, so child callbacks, hooks, events, and audit paths still run, and cascading destroy stays inside the parent’s transaction (failures roll back with the parent).
+
+| `dependent:` | Behaviour |
+|----------------|-----------|
+| `:destroy` | child service `destroy` for each associated record |
+| `:nullify` | child service `update` with FK set to `nil` |
+| `:restrict` | `validation_error` if any children exist (parent is not deleted) |
+| `:ignore` | nothing — rely on DB constraints (default) |
+
+`async: true` is **not** compatible with `:destroy`, `:nullify`, or `:restrict`, because deferred jobs cannot safely participate in the same transaction as parent destroy or FK cleanup.
 
 ---
 
@@ -78,7 +99,7 @@ OrderService.call(
 )
 ```
 
-**Transaction behavior:** all child writes run inside the parent's open transaction. Any failure (parent or child) rolls back the entire operation.
+**Transaction behavior:** for synchronous associations, all child writes run inside the parent's open transaction. Any failure (parent or child) rolls back the entire operation. For `async: true` associations, the parent commits first; the nested write runs later in a job (see [Async nested writes](#async-nested-writes)).
 
 ### Result shape for nested create
 
@@ -120,7 +141,59 @@ OrderService.call(
 )
 ```
 
-All nested operations run within the parent's transaction — any failure triggers a full rollback.
+For synchronous associations, all nested operations run within the parent's transaction — any failure triggers a full rollback. Async associations do not block the parent on child success.
+
+---
+
+## Async nested writes
+
+Mark a `has_many` or `has_one` association with `async: true` to **enqueue** nested creates/updates as a background job **after** the parent transaction commits, instead of running inline.
+
+### Configuration
+
+Set an ActiveJob class on the global configuration (required whenever `async: true` is used):
+
+```ruby
+# config/initializers/railsmith.rb
+Railsmith.configure do |config|
+  config.async_job_class = Railsmith::AsyncNestedWriteJob
+end
+```
+
+If `async_job_class` is missing, nested writes raise `Railsmith::AsyncNotConfiguredError`.
+
+The gem ships with `Railsmith::AsyncNestedWriteJob`, which re-hydrates the parent service, rebuilds `Context` from the serialized hash, and re-runs the nested write for the given association. You may subclass or replace it as long as the job’s `perform` contract matches what `enqueue_nested_write` passes (`service_class`, `association`, `parent_id`, `nested_params`, `mode`, `context`).
+
+### Semantics
+
+| Concern | Sync (default) | Async (`async: true`) |
+|---------|----------------|------------------------|
+| Runs inside parent transaction | Yes | No — job runs after commit |
+| Parent waits for children | Yes | No |
+| Child failure rolls back parent | Yes | No |
+| Child failure handling | Result failure → full rollback | ActiveJob retries / dead-lettering |
+
+### When to use `async: true`
+
+- Audit events, analytics, notifications — work that should not block the HTTP response or roll back the parent if it fails.
+- Large fan-out where enqueueing is cheaper than holding one transaction open.
+
+### When not to use `async: true`
+
+- Core data that must stay consistent with the parent (for example order line items).
+- Associations with `dependent: :destroy`, `:nullify`, or `:restrict` (disallowed at declaration time).
+- Any case where you need the parent and children to succeed or fail together in one transaction.
+
+### Instrumentation
+
+Railsmith emits:
+
+| Event | When |
+|-------|------|
+| `nested_write.enqueued.railsmith` | After the job is enqueued; payload includes `association`, `parent_id`, `job_id`, `mode`, `service` |
+| `async_nested_write.failed.railsmith` | When the job rescues an exception before re-raising (can fire on each failed attempt until the job succeeds or is discarded; pair with your job backend’s retry/DLQ settings) |
+
+Subscribe via `Railsmith::Instrumentation.subscribe` or `ActiveSupport::Notifications`.
 
 ---
 

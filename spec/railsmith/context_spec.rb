@@ -115,6 +115,12 @@ RSpec.describe Railsmith::Context do
       expect(ctx.request_id).to eq("my-fixed-id")
     end
 
+    it "preserves an explicit request_id and never overwrites it" do
+      ctx = described_class.new(domain: :commerce, request_id: "lb-supplied-id")
+      expect(ctx.request_id).to eq("lb-supplied-id")
+      expect(ctx.to_h[:request_id]).to eq("lb-supplied-id")
+    end
+
     it "is accessible via []" do
       ctx = described_class.new(request_id: "r99")
       expect(ctx[:request_id]).to eq("r99")
@@ -255,6 +261,23 @@ RSpec.describe Railsmith::Context do
       captured = nil
       described_class.with(ctx) { captured = described_class.current }
       expect(captured).to be(ctx)
+    end
+
+    it "propagates an explicit request_id to nested services when set once at the edge" do
+      captured_ids = []
+      service_class = Class.new(Railsmith::BaseService) do
+        define_method(:probe) do
+          captured_ids << context[:request_id]
+          Railsmith::Result.success(value: captured_ids.last)
+        end
+      end
+
+      described_class.with(domain: :web, request_id: "edge-id") do
+        service_class.call(action: :probe)
+        service_class.call(action: :probe)
+      end
+
+      expect(captured_ids).to eq(%w[edge-id edge-id])
     end
   end
 end

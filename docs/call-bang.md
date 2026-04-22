@@ -73,6 +73,33 @@ The rendered JSON body is `result.to_h` — the same shape as every other Railsm
 
 ---
 
+## Request ID and `railsmith_context`
+
+By default, a new `Railsmith::Context` gets an auto-generated `request_id`. That value will **not** match the `X-Request-Id` header on the incoming request, which breaks correlation with load balancers and upstream callers.
+
+After you `include Railsmith::ControllerHelpers`, use `railsmith_context` to build a context whose `request_id` comes from `request.request_id` (ActionDispatch’s value derived from `X-Request-Id`):
+
+```ruby
+class OrdersController < ApplicationController
+  include Railsmith::ControllerHelpers
+
+  def create
+    result = OrderService.call!(
+      action: :create,
+      params: { attributes: order_params },
+      context: railsmith_context(domain: :commerce, actor_id: current_user.id)
+    )
+    render json: result.value, status: :created
+  end
+end
+```
+
+You can still override the id by passing `request_id:` explicitly to `railsmith_context`.
+
+For many services per request, set context once in `around_action` with `Railsmith::Context.with(domain: ..., request_id: request.request_id, ...)` so every call without an explicit `context:` inherits the same `request_id`. See [Thread-local context propagation](cookbook.md#thread-local-context-propagation) in the cookbook.
+
+---
+
 ## Controller without `ControllerHelpers`
 
 You can also rescue `Railsmith::Failure` manually for custom handling:

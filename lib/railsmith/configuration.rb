@@ -5,7 +5,8 @@ module Railsmith
   class Configuration
     attr_accessor :warn_on_cross_domain_calls, :strict_mode,
                   :cross_domain_allowlist, :on_cross_domain_violation,
-                  :fail_on_arch_violations
+                  :fail_on_arch_violations,
+                  :async_job_class
 
     def initialize
       @warn_on_cross_domain_calls = true
@@ -15,6 +16,7 @@ module Railsmith
       @fail_on_arch_violations = false
       @custom_coercions = {}
       @global_hooks = nil
+      @async_job_class = nil
     end
 
     # Register a custom type coercion used by the input DSL.

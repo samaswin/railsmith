@@ -108,6 +108,7 @@ class OrderService < Railsmith::BaseService
   domain :commerce
 
   has_many   :line_items,       service: LineItemService, dependent: :destroy
+  has_many   :audit_events,     service: AuditEventService, async: true
   has_one    :shipping_address, service: AddressService,  dependent: :nullify
   belongs_to :customer,         service: CustomerService, optional: true
 
@@ -130,9 +131,9 @@ OrderService.call(
 )
 ```
 
-All nested writes run in the parent's transaction. Any failure rolls back everything.
+By default, nested writes run in the parent's transaction; any failure rolls back everything. Associations declared with `async: true` enqueue a background job **after** the parent commits instead — see [Async nested writes](docs/associations.md#async-nested-writes).
 
-See [docs/associations.md](docs/associations.md) for the full reference.
+See [docs/associations.md](docs/associations.md) for the full reference (including `dependent:` modes and async configuration).
 
 ---
 
@@ -352,6 +353,29 @@ ctx = Railsmith::Context.new(domain: :billing, request_id: "req-abc")
 Billing::Services::InvoiceService.call(action: :create, params: { ... }, context: ctx)
 ```
 
+### Request ID (`X-Request-Id`)
+
+If you omit `request_id`, Railsmith auto-generates one — which does **not** match the `X-Request-Id` header ActionDispatch exposes on the request. To align service instrumentation with your load balancer or upstream caller, pass the request id from the controller.
+
+Include `Railsmith::ControllerHelpers` and use `railsmith_context` (it sets `request_id` from `request.request_id`):
+
+```ruby
+class OrdersController < ApplicationController
+  include Railsmith::ControllerHelpers
+
+  def create
+    result = OrderService.call!(
+      action: :create,
+      params: { attributes: order_params },
+      context: railsmith_context(domain: :commerce, actor_id: current_user.id)
+    )
+    render json: result.value, status: :created
+  end
+end
+```
+
+You can also set context once per request with `Railsmith::Context.with` (for example in `around_action`), including `request_id: request.request_id`, so every service call without an explicit `context:` inherits it. See [docs/call-bang.md](docs/call-bang.md#request-id-and-railsmith_context).
+
 When the context domain differs from a service's declared `domain`, Railsmith emits a `cross_domain.warning.railsmith` instrumentation event. The payload includes `log_json_line` and `log_kv_line` (from `Railsmith::CrossDomainWarningFormatter`) for structured logging; when `strict_mode` is true, `on_cross_domain_violation` receives the same payload.
 
 Configure enforcement in `config/initializers/railsmith.rb`:
@@ -362,6 +386,9 @@ Railsmith.configure do |config|
   config.strict_mode = false
   config.on_cross_domain_violation = ->(payload) { ... }
   config.cross_domain_allowlist = [{ from: :catalog, to: :billing }]
+
+  # Required if any association uses async: true (see docs/associations.md)
+  # config.async_job_class = Railsmith::AsyncNestedWriteJob
 end
 ```
 
@@ -403,10 +430,10 @@ See [Migration](MIGRATION.md#embedding-architecture-checks-from-ruby) for option
 
 - [Quickstart](docs/quickstart.md) — install, generate, first call
 - [Inputs](docs/inputs.md) — declarative input DSL, type coercion, filtering, custom coercions
-- [Associations](docs/associations.md) — association DSL, eager loading, nested CRUD, cascading destroy
+- [Associations](docs/associations.md) — association DSL, eager loading, nested CRUD, cascading destroy, async nested writes
 - [Pipelines](docs/pipelines.md) — sequential service composition, param forwarding, rollback, conditional steps, instrumentation
 - [Hooks](docs/hooks.md) — before/after/around DSL, conditional hooks, inheritance, global hooks, introspection
-- [call!](docs/call-bang.md) — raising variant, controller integration, `ControllerHelpers`
+- [call!](docs/call-bang.md) — raising variant, controller integration, `ControllerHelpers`, `railsmith_context` / request IDs
 - [Cookbook](docs/cookbook.md) — CRUD, bulk, inputs, associations, domain context, error mapping, observability
 - [Legacy Adoption Guide](docs/legacy-adoption.md) — incremental migration strategy
 - [Migration](MIGRATION.md) — upgrading from any 1.x release

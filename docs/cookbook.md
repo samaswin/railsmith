@@ -358,9 +358,15 @@ Set context once at the edge of a request instead of threading it through every 
 ```ruby
 # app/controllers/application_controller.rb
 around_action do |_, block|
-  Railsmith::Context.with(domain: :web, actor_id: current_user&.id) { block.call }
+  Railsmith::Context.with(
+    domain:     :web,
+    request_id: request.request_id,
+    actor_id:   current_user&.id
+  ) { block.call }
 end
 ```
+
+`request.request_id` matches the `X-Request-Id` header ActionDispatch observed, so service instrumentation lines up with distributed tracing outside Rails.
 
 Services automatically inherit the thread-local context when no explicit `context:` is passed:
 
@@ -794,7 +800,7 @@ result.meta[:nested]
 #       shipping_address: { success: true } }
 ```
 
-If any nested write fails, the entire transaction rolls back — the parent order is not saved.
+If any **synchronous** nested write fails, the entire transaction rolls back — the parent order is not saved. For associations declared with `async: true`, child writes run after commit in a background job; configure `Railsmith.configure { |c| c.async_job_class = ... }` and see [Associations — Async nested writes](associations.md#async-nested-writes).
 
 ---
 

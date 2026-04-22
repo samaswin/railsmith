@@ -29,14 +29,19 @@ module Railsmith
         # @param foreign_key [Symbol]  explicit FK; inferred from parent model when omitted
         # @param dependent   [Symbol]  :destroy, :nullify, :restrict, or :ignore (default)
         # @param validate    [Boolean] validate nested records (default: true)
-        def has_many(name, service:, foreign_key: nil, dependent: :ignore, validate: true)
+        # @param async       [Boolean] when true, nested writes are enqueued as
+        #   background jobs instead of running inline inside the parent's
+        #   transaction (default: false). Not compatible with
+        #   +dependent: :destroy/:nullify/:restrict+.
+        def has_many(name, service:, foreign_key: nil, dependent: :ignore, validate: true, async: false)
           association_registry.register(
             AssociationDefinition.new(
               name, :has_many,
               service: service,
               foreign_key: foreign_key,
               dependent: dependent,
-              validate: validate
+              validate: validate,
+              async: async
             )
           )
         end
@@ -48,14 +53,18 @@ module Railsmith
         # @param foreign_key [Symbol]  explicit FK; inferred from parent model when omitted
         # @param dependent   [Symbol]  :destroy, :nullify, :restrict, or :ignore (default)
         # @param validate    [Boolean] validate nested records (default: true)
-        def has_one(name, service:, foreign_key: nil, dependent: :ignore, validate: true)
+        # @param async       [Boolean] when true, the nested write is enqueued as
+        #   a background job instead of running inline. Not compatible with
+        #   +dependent: :destroy/:nullify/:restrict+.
+        def has_one(name, service:, foreign_key: nil, dependent: :ignore, validate: true, async: false)
           association_registry.register(
             AssociationDefinition.new(
               name, :has_one,
               service: service,
               foreign_key: foreign_key,
               dependent: dependent,
-              validate: validate
+              validate: validate,
+              async: async
             )
           )
         end
