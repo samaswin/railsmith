@@ -34,16 +34,17 @@ module Railsmith
         result        = execute_steps
 
         Instrumentation.instrument("pipeline", {
-          pipeline: pipeline_name,
-          status:   result.success? ? :success : :failure,
-          duration: clock_now - started_at
-        })
+                                     pipeline: pipeline_name,
+                                     status: result.success? ? :success : :failure,
+                                     duration: clock_now - started_at
+                                   })
 
         result
       end
 
       private
 
+      # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
       def execute_steps
         last_result = nil
 
@@ -57,18 +58,16 @@ module Railsmith
           step_result     = execute_step(step_def, params_for_step)
 
           if step_result.failure?
-            if step_def.continue_on_failure?
-              next
-            end
+            next if step_def.continue_on_failure?
 
             rollback_failures = run_rollbacks
             return wrap_failure(step_result, step_def, rollback_failures)
           end
 
           @executed_steps << ExecutedStep.new(
-            step_def:    step_def,
+            step_def: step_def,
             params_used: params_for_step,
-            result:      step_result
+            result: step_result
           )
           last_result = step_result
           merge_value_into_accumulated(step_result.value)
@@ -77,12 +76,13 @@ module Railsmith
         # An empty pipeline succeeds with nil value; non-empty returns last step's result.
         last_result || Result.success(value: nil)
       end
+      # rubocop:enable Metrics/MethodLength, Metrics/AbcSize
 
       def emit_skipped_event(step_def)
         Instrumentation.instrument("pipeline.step.skipped", {
-          pipeline: @pipeline_class.pipeline_name,
-          step:     step_def.name
-        })
+                                     pipeline: @pipeline_class.pipeline_name,
+                                     step: step_def.name
+                                   })
       end
 
       def execute_step(step_def, params)
@@ -92,11 +92,11 @@ module Railsmith
         raw = step_def.service.call(action: step_def.action, params: params, context: @context)
 
         Instrumentation.instrument("pipeline.step", {
-          pipeline: pipeline_name,
-          step:     step_def.name,
-          status:   raw.success? ? :success : :failure,
-          duration: clock_now - started_at
-        })
+                                     pipeline: pipeline_name,
+                                     step: step_def.name,
+                                     status: raw.success? ? :success : :failure,
+                                     duration: clock_now - started_at
+                                   })
 
         raw
       end
@@ -110,7 +110,7 @@ module Railsmith
         failures = []
 
         @executed_steps.reverse_each do |entry|
-          next unless entry.step_def.has_rollback?
+          next unless entry.step_def.rollback?
 
           failed = invoke_rollback(entry.step_def, entry.params_used, entry.result)
           failures << { step: entry.step_def.name, error: failed.error } if failed
@@ -121,6 +121,7 @@ module Railsmith
 
       # Invoke a single step's rollback handler. Returns the failure Result if the
       # rollback itself fails, nil on success.
+      # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
       def invoke_rollback(step_def, params_used, step_result)
         rollback_params = build_rollback_params(params_used, step_result)
         started_at      = clock_now
@@ -128,28 +129,29 @@ module Railsmith
         raw = case step_def.rollback
               when Symbol
                 step_def.service.call(
-                  action:  step_def.rollback,
-                  params:  rollback_params,
+                  action: step_def.rollback,
+                  params: rollback_params,
                   context: @context
                 )
               when Proc
                 begin
                   outcome = step_def.rollback.call(step_result, @context)
                   outcome.is_a?(Result) ? outcome : Result.success
-                rescue => e
+                rescue StandardError => e
                   Result.failure(code: :unexpected, message: e.message)
                 end
               end
 
         Instrumentation.instrument("pipeline.rollback", {
-          pipeline: @pipeline_class.pipeline_name,
-          step:     step_def.name,
-          status:   raw.success? ? :success : :failure,
-          duration: clock_now - started_at
-        })
+                                     pipeline: @pipeline_class.pipeline_name,
+                                     step: step_def.name,
+                                     status: raw.success? ? :success : :failure,
+                                     duration: clock_now - started_at
+                                   })
 
         raw.failure? ? raw : nil
       end
+      # rubocop:enable Metrics/MethodLength, Metrics/AbcSize
 
       # Build params to pass to the rollback handler: the params forwarded to the
       # forward step, merged with the step's result.value when it is a Hash.
@@ -177,7 +179,7 @@ module Railsmith
 
         Result.failure(
           error: step_result.error,
-          meta:  meta
+          meta: meta
         )
       end
 

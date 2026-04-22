@@ -64,7 +64,10 @@ RSpec.describe "Pipeline conditional steps" do
 
     it "passes accumulated_params to the proc" do
       received = nil
-      d = defn(condition: ->(p, _c) { received = p; true }, polarity: :if)
+      d = defn(condition: lambda { |p, _c|
+        received = p
+        true
+      }, polarity: :if)
       d.skip?({ foo: 1 }, nil)
       expect(received).to eq({ foo: 1 })
     end
@@ -72,7 +75,10 @@ RSpec.describe "Pipeline conditional steps" do
     it "passes context to the proc" do
       received = nil
       ctx = Railsmith::Context.build({ actor_id: 5 })
-      d = defn(condition: ->(_p, c) { received = c; true }, polarity: :if)
+      d = defn(condition: lambda { |_p, c|
+        received = c
+        true
+      }, polarity: :if)
       d.skip?({}, ctx)
       expect(received[:actor_id]).to eq(5)
     end
@@ -162,7 +168,7 @@ RSpec.describe "Pipeline conditional steps" do
     end
 
     it "child guard additions do not leak to parent" do
-      parent = build_pipeline {}
+      parent = build_pipeline {} # rubocop:disable Lint/EmptyBlock
       child  = Class.new(parent)
       child.guard(:child_only) { |_p, _c| true }
       expect(parent.guards).not_to have_key(:child_only)
@@ -226,7 +232,7 @@ RSpec.describe "Pipeline conditional steps" do
 
     it "pipeline still succeeds when a conditional step is skipped" do
       svc = success_service(:go)
-      skip_svc = failure_service(:go)   # would fail if executed
+      skip_svc = failure_service(:go) # would fail if executed
 
       result = build_pipeline do
         step :ok,  service: svc,      action: :go
@@ -400,7 +406,7 @@ RSpec.describe "Pipeline conditional steps" do
       build_pipeline do
         # This step is skipped — its rollback must never fire
         step :skipped, service: svc_with_rollback, action: :go,
-             rollback: :undo, if: ->(_p, _c) { false }
+                       rollback: :undo, if: ->(_p, _c) { false }
         step :fails, service: fail_svc, action: :go
       end.call(params: {})
 
@@ -466,7 +472,7 @@ RSpec.describe "Pipeline conditional steps" do
 
       build_pipeline do
         step :non_critical, service: non_critical, action: :go,
-             rollback: :undo, on_failure_continue: true
+                            rollback: :undo, on_failure_continue: true
         step :later_fail,   service: fail_svc,     action: :go
       end.call(params: {})
 
@@ -477,7 +483,7 @@ RSpec.describe "Pipeline conditional steps" do
       rolled_back = []
 
       normal_svc    = Class.new(Railsmith::BaseService) do
-        def go   = Railsmith::Result.success
+        def go = Railsmith::Result.success
         define_method(:undo) do
           rolled_back << :normal
           Railsmith::Result.success
@@ -489,7 +495,7 @@ RSpec.describe "Pipeline conditional steps" do
       result = build_pipeline do
         step :non_critical, service: non_crit_svc, action: :go, on_failure_continue: true
         step :normal,       service: normal_svc,   action: :go, rollback: :undo
-        step :hard_fail,    service: fail_svc,      action: :go
+        step :hard_fail,    service: fail_svc, action: :go
       end.call(params: {})
 
       expect(result).to be_failure

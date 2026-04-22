@@ -62,20 +62,21 @@ module Railsmith
       @global_hooks = nil
     end
 
-    def before_action(*actions, **options, &block)
-      add_global_hook(:before, actions, options, &block)
+    def before_action(*actions, **options, &)
+      add_global_hook(:before, actions, options, &)
     end
 
-    def after_action(*actions, **options, &block)
-      add_global_hook(:after, actions, options, &block)
+    def after_action(*actions, **options, &)
+      add_global_hook(:after, actions, options, &)
     end
 
-    def around_action(*actions, **options, &block)
-      add_global_hook(:around, actions, options, &block)
+    def around_action(*actions, **options, &)
+      add_global_hook(:around, actions, options, &)
     end
 
     private
 
+    # rubocop:disable Metrics/MethodLength
     def add_global_hook(type, actions, options, &block)
       raise ArgumentError, "hook block is required" if block.nil?
       raise ArgumentError, "at least one action symbol is required" if actions.empty?
@@ -93,6 +94,7 @@ module Railsmith
         )
       )
     end
+    # rubocop:enable Metrics/MethodLength
 
     def extract_global_condition(options)
       if options.key?(:if) && options.key?(:unless)

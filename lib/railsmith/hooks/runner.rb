@@ -47,6 +47,7 @@ module Railsmith
 
       attr_reader :instance, :action, :service_class
 
+      # rubocop:disable Metrics/AbcSize
       def resolve_chain
         class_chain = service_class.respond_to?(:hook_registry) ? service_class.hook_registry.chain : HookChain.new
         # Global hooks with +only:+ filter by the *service* domain (the bounded
@@ -61,6 +62,7 @@ module Railsmith
         applicable = combined.for_action(action).entries.select { |e| e.applicable?(instance) }
         HookChain.new(applicable)
       end
+      # rubocop:enable Metrics/AbcSize
 
       def run_befores(entries)
         entries.each do |entry|
@@ -94,6 +96,7 @@ module Railsmith
       # Wrap +next_call+ with +entry+'s around block, returning a new callable.
       # Enforces that the block invokes the wrapped action -- otherwise raises
       # +AroundHookNotYieldedError+ to surface the "forgot to yield" bug class.
+      # rubocop:disable Metrics/MethodLength
       def build_around_wrapper(entry, next_call)
         inst = instance
         action_name = @action
@@ -112,6 +115,7 @@ module Railsmith
           result
         end
       end
+      # rubocop:enable Metrics/MethodLength
     end
   end
 end

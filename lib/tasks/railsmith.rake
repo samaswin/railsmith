@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+# rubocop:disable Metrics/BlockLength
 namespace :railsmith do
   desc <<~DESC
     Run Railsmith architecture checks on controller files and print a report.
@@ -28,13 +29,13 @@ namespace :railsmith do
     Requires the Rails environment to be loaded so all pipeline constants are available.
     Run as: rake railsmith:pipelines
   DESC
-  task :pipelines => :environment do
+  task pipelines: :environment do
     require "railsmith"
     require "railsmith/pipeline"
 
-    pipelines = ObjectSpace.each_object(Class).select { |klass|
+    pipelines = ObjectSpace.each_object(Class).select do |klass|
       klass < Railsmith::Pipeline && klass.name
-    }.sort_by(&:name)
+    end.sort_by(&:name)
 
     if pipelines.empty?
       puts "No Railsmith pipelines found."
@@ -45,7 +46,7 @@ namespace :railsmith do
       puts "\n#{pipeline.name}"
       puts "  (no steps declared)" if pipeline.step_definitions.empty?
 
-      pipeline.step_definitions.each_with_index do |step, idx|
+      pipeline.step_definitions.each_with_index do |step, _idx|
         svc_name   = step.service.respond_to?(:name) ? step.service.name : step.service.to_s
         parts      = ["  step :#{step.name}", "service: #{svc_name}", "action: :#{step.action}"]
         parts      << "rollback: :#{step.rollback}" if step.rollback.is_a?(Symbol)
@@ -59,3 +60,4 @@ namespace :railsmith do
     puts ""
   end
 end
+# rubocop:enable Metrics/BlockLength

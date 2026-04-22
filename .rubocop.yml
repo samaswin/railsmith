@@ -10,6 +10,7 @@ AllCops:
   NewCops: enable
   Exclude:
     - "railsmith_sample/**/*"
+    - "gemfiles/vendor/**/*"
 
 Style/StringLiterals:
   EnforcedStyle: double_quotes

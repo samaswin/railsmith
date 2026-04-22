@@ -29,7 +29,10 @@ RSpec.describe "Pipeline conditional integration — CheckoutPipeline with optio
     Class.new(Railsmith::BaseService) do
       define_method(:apply) do
         calls << { params: params.dup }
-        return Railsmith::Result.failure(code: :invalid_coupon, message: "Coupon expired") if params[:coupon_code] == "INVALID"
+        if params[:coupon_code] == "INVALID"
+          return Railsmith::Result.failure(code: :invalid_coupon,
+                                           message: "Coupon expired")
+        end
 
         Railsmith::Result.success(value: { cart_total: params[:cart_total] - 20, discount_applied: true })
       end
@@ -71,21 +74,15 @@ RSpec.describe "Pipeline conditional integration — CheckoutPipeline with optio
   # ---------------------------------------------------------------------------
 
   def checkout_pipeline(cart:, coupon:, inventory:, payment:, notification:)
-    _cart  = cart
-    _coup  = coupon
-    _inv   = inventory
-    _pay   = payment
-    _notif = notification
-
     Class.new(Railsmith::Pipeline) do
       # Named guard: coupon step runs only when coupon_code is present in params
       guard(:has_coupon?) { |params, _ctx| params.key?(:coupon_code) && !params[:coupon_code].nil? }
 
-      step :validate_cart,     service: _cart,  action: :validate
-      step :apply_coupon,      service: _coup,  action: :apply,       if: :has_coupon?
-      step :reserve_inventory, service: _inv,   action: :reserve,     rollback: :unreserve
-      step :charge_payment,    service: _pay,   action: :charge,      inputs: { amount: :cart_total }
-      step :send_confirmation, service: _notif, action: :send_receipt
+      step :validate_cart,     service: cart,         action: :validate
+      step :apply_coupon,      service: coupon,       action: :apply,       if: :has_coupon?
+      step :reserve_inventory, service: inventory,    action: :reserve,     rollback: :unreserve
+      step :charge_payment,    service: payment,      action: :charge,      inputs: { amount: :cart_total }
+      step :send_confirmation, service: notification, action: :send_receipt
     end
   end
 
@@ -221,9 +218,9 @@ RSpec.describe "Pipeline conditional integration — CheckoutPipeline with optio
       result = pipeline.call(params: { cart_id: 1, coupon_code: "INVALID" })
 
       expect(result).to be_failure
-      expect(result.error.code).to    eq("invalid_coupon")
+      expect(result.error.code).to eq("invalid_coupon")
       expect(result.meta[:pipeline_step]).to eq(:apply_coupon)
-      expect(rollback_called).to be false  # nothing to roll back yet
+      expect(rollback_called).to be false # nothing to roll back yet
     end
   end
 
@@ -241,20 +238,14 @@ RSpec.describe "Pipeline conditional integration — CheckoutPipeline with optio
     end
 
     def resilient_checkout_pipeline(cart:, coupon:, inventory:, payment:, notification:)
-      _cart  = cart
-      _coup  = coupon
-      _inv   = inventory
-      _pay   = payment
-      _notif = notification
-
       Class.new(Railsmith::Pipeline) do
         guard(:has_coupon?) { |params, _ctx| params.key?(:coupon_code) && !params[:coupon_code].nil? }
 
-        step :validate_cart,     service: _cart,  action: :validate
-        step :apply_coupon,      service: _coup,  action: :apply,       if: :has_coupon?
-        step :reserve_inventory, service: _inv,   action: :reserve,     rollback: :unreserve
-        step :charge_payment,    service: _pay,   action: :charge,      inputs: { amount: :cart_total }
-        step :send_confirmation, service: _notif, action: :send_receipt, on_failure_continue: true
+        step :validate_cart,     service: cart,         action: :validate
+        step :apply_coupon,      service: coupon,       action: :apply,       if: :has_coupon?
+        step :reserve_inventory, service: inventory,    action: :reserve,     rollback: :unreserve
+        step :charge_payment,    service: payment,      action: :charge,      inputs: { amount: :cart_total }
+        step :send_confirmation, service: notification, action: :send_receipt, on_failure_continue: true
       end
     end
 

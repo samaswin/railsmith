@@ -192,6 +192,7 @@ module Railsmith
         template "model_service.rb.tt", target_file
       end
 
+      # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
       def register_with_pipeline
         return if options[:pipeline].to_s.strip.empty?
 
@@ -214,6 +215,7 @@ module Railsmith
 
         insert_into_file pipeline_path, step_line, before: /\n#{Regexp.escape(class_indent)}end\n?\z/m
       end
+      # rubocop:enable Metrics/MethodLength, Metrics/AbcSize
 
       private
 

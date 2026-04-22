@@ -15,9 +15,13 @@ module Railsmith
 
       attr_reader :type, :actions, :block, :condition, :polarity, :name, :only_domains
 
+      # rubocop:disable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
       def initialize(type:, actions:, block:, condition: nil, polarity: :if, name: nil, only_domains: nil)
         raise ArgumentError, "type must be one of #{VALID_TYPES.inspect}" unless VALID_TYPES.include?(type)
-        raise ArgumentError, "polarity must be one of #{VALID_POLARITIES.inspect}" unless VALID_POLARITIES.include?(polarity)
+        unless VALID_POLARITIES.include?(polarity)
+          raise ArgumentError,
+                "polarity must be one of #{VALID_POLARITIES.inspect}"
+        end
         raise ArgumentError, "hook block is required" if block.nil?
         raise ArgumentError, "actions must be a non-empty Array" if actions.nil? || actions.empty?
 
@@ -26,10 +30,11 @@ module Railsmith
         @block = block
         @condition = condition
         @polarity = polarity
-        @name = name ? name.to_sym : nil
+        @name = name&.to_sym
         @only_domains = only_domains ? only_domains.map { |d| Context.normalize_current_domain(d) }.freeze : nil
         freeze
       end
+      # rubocop:enable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
       # True when this hook targets the given action symbol.
       def applies_to?(action)
@@ -55,6 +60,7 @@ module Railsmith
 
       private
 
+      # rubocop:disable Metrics/MethodLength
       def evaluate_condition(instance)
         case condition
         when Symbol
@@ -71,6 +77,7 @@ module Railsmith
           raise ArgumentError, "unsupported condition type: #{condition.class}"
         end
       end
+      # rubocop:enable Metrics/MethodLength
     end
   end
 end

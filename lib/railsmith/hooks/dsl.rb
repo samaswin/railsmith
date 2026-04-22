@@ -35,15 +35,15 @@ module Railsmith
         # @param if      [Symbol, Proc]  optional method name or callable guard
         # @param unless  [Symbol, Proc]  optional inverted guard
         # @param name    [Symbol]        optional name for +skip_before+ targeting
-        def before(*actions, **options, &block)
-          register_hook(:before, actions, options, &block)
+        def before(*actions, **options, &)
+          register_hook(:before, actions, options, &)
         end
 
         # Declare an +after+ hook. The block receives the service's Result as
         # its block argument and runs after the action completes (successful
         # or not). After hooks cannot change the returned Result.
-        def after(*actions, **options, &block)
-          register_hook(:after, actions, options, &block)
+        def after(*actions, **options, &)
+          register_hook(:after, actions, options, &)
         end
 
         # Declare an +around+ hook. The block receives a callable +action+;
@@ -51,8 +51,8 @@ module Railsmith
         # +AroundHookNotYieldedError+ is raised. Whatever the block returns
         # becomes the Result for the call, so around hooks can short-circuit
         # or transform the outcome.
-        def around(*actions, **options, &block)
-          register_hook(:around, actions, options, &block)
+        def around(*actions, **options, &)
+          register_hook(:around, actions, options, &)
         end
 
         # Remove an inherited hook by name, regardless of type.
@@ -99,6 +99,7 @@ module Railsmith
 
         private
 
+        # rubocop:disable Metrics/MethodLength
         def register_hook(type, actions, options, &block)
           raise ArgumentError, "hook block is required" if block.nil?
           raise ArgumentError, "at least one action symbol is required" if actions.empty?
@@ -116,6 +117,7 @@ module Railsmith
             )
           )
         end
+        # rubocop:enable Metrics/MethodLength
 
         def extract_condition(options)
           if options.key?(:if) && options.key?(:unless)
@@ -136,8 +138,8 @@ module Railsmith
       # Wraps the action dispatch in the full hook sandwich. When no hooks
       # are declared on the class or globally, this is effectively a no-op
       # cost — the Runner short-circuits on an empty chain.
-      def run_lifecycle_hooks(action, &action_block)
-        Runner.new(instance: self, action: action).run(&action_block)
+      def run_lifecycle_hooks(action, &)
+        Runner.new(instance: self, action: action).run(&)
       end
     end
   end

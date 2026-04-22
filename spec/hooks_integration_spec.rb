@@ -14,7 +14,7 @@ RSpec.describe "lifecycle hook integration patterns" do
       service = Class.new(Railsmith::BaseService) do
         before :create, :update do
           # Hook body runs in the service instance context.
-          ::AUDIT_SINK << {
+          AUDIT_SINK << {
             service: self.class.name || "anon",
             actor: context[:actor_id],
             action: :current
@@ -45,7 +45,7 @@ RSpec.describe "lifecycle hook integration patterns" do
 
       service = Class.new(Railsmith::BaseService) do
         after :create do |result|
-          ::EVENT_BUS << { topic: "created", payload: result.value } if result.success?
+          EVENT_BUS << { topic: "created", payload: result.value } if result.success?
         end
 
         def create
@@ -75,7 +75,7 @@ RSpec.describe "lifecycle hook integration patterns" do
           t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC)
           result = action.call
           dt = Process.clock_gettime(Process::CLOCK_MONOTONIC) - t0
-          ::TIMINGS << dt
+          TIMINGS << dt
           result
         end
 
@@ -94,14 +94,14 @@ RSpec.describe "lifecycle hook integration patterns" do
 
   describe "hook + inputs + CRUD interaction" do
     it "does not break input resolution when hooks are declared" do
-      seen_params = nil
+      nil
 
       service = Class.new(Railsmith::BaseService) do
         input :email, String, required: true
 
         before :do_it do |params|
           # params argument reflects the service's current @params
-          ::HOOK_CAPTURE[:params] = params
+          HOOK_CAPTURE[:params] = params
         end
 
         def do_it

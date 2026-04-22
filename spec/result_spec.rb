@@ -115,7 +115,7 @@ RSpec.describe Railsmith::Result do
   describe "#and_then" do
     it "runs the block on success and returns the block's Result" do
       result = described_class.success(value: 10)
-        .and_then { |v| described_class.success(value: v * 2) }
+                              .and_then { |v| described_class.success(value: v * 2) }
 
       expect(result.success?).to be(true)
       expect(result.value).to eq(20)
@@ -124,7 +124,10 @@ RSpec.describe Railsmith::Result do
     it "skips the block on failure and returns self" do
       original = described_class.failure(code: :not_found, message: "Missing")
       ran = false
-      returned = original.and_then { |_v| ran = true; described_class.success(value: 1) }
+      returned = original.and_then do |_v|
+        ran = true
+        described_class.success(value: 1)
+      end
 
       expect(ran).to be(false)
       expect(returned).to be(original)
@@ -132,7 +135,11 @@ RSpec.describe Railsmith::Result do
 
     it "propagates failure returned by the block" do
       result = described_class.success(value: 5)
-        .and_then { |_v| described_class.failure(code: :invalid, message: "Bad") }
+                              .and_then do |_v|
+        described_class.failure(
+          code: :invalid, message: "Bad"
+        )
+      end
 
       expect(result.failure?).to be(true)
       expect(result.code).to eq("invalid")
@@ -140,31 +147,38 @@ RSpec.describe Railsmith::Result do
 
     it "preserves original meta in the chained result" do
       result = described_class.success(value: 1, meta: { trace_id: "t1" })
-        .and_then { |v| described_class.success(value: v + 1) }
+                              .and_then { |v| described_class.success(value: v + 1) }
 
       expect(result.meta).to include(trace_id: "t1")
     end
 
     it "lets chained result meta take precedence over original meta on key conflicts" do
       result = described_class.success(value: 1, meta: { trace_id: "original" })
-        .and_then { |v| described_class.success(value: v, meta: { trace_id: "chained" }) }
+                              .and_then do |v|
+        described_class.success(
+          value: v, meta: { trace_id: "chained" }
+        )
+      end
 
       expect(result.meta[:trace_id]).to eq("chained")
     end
 
     it "can be chained multiple times" do
       result = described_class.success(value: 1)
-        .and_then { |v| described_class.success(value: v + 1) }
-        .and_then { |v| described_class.success(value: v * 3) }
+                              .and_then { |v| described_class.success(value: v + 1) }
+                              .and_then { |v| described_class.success(value: v * 3) }
 
       expect(result.value).to eq(6)
     end
 
     it "short-circuits remaining chain on first failure" do
       ran = false
-      result = described_class.success(value: 1)
-        .and_then { |_v| described_class.failure(code: :boom, message: "Boom") }
-        .and_then { |_v| ran = true; described_class.success(value: 99) }
+      first = described_class.success(value: 1)
+                             .and_then { |_v| described_class.failure(code: :boom, message: "Boom") }
+      result = first.and_then do |_v|
+        ran = true
+        described_class.success(value: 99)
+      end
 
       expect(ran).to be(false)
       expect(result.failure?).to be(true)
@@ -175,7 +189,7 @@ RSpec.describe Railsmith::Result do
   describe "#or_else" do
     it "runs the block on failure and returns the block's Result" do
       result = described_class.failure(code: :not_found, message: "Missing")
-        .or_else { |e| described_class.success(value: "recovered: #{e.message}") }
+                              .or_else { |e| described_class.success(value: "recovered: #{e.message}") }
 
       expect(result.success?).to be(true)
       expect(result.value).to eq("recovered: Missing")
@@ -184,7 +198,10 @@ RSpec.describe Railsmith::Result do
     it "skips the block on success and returns self" do
       original = described_class.success(value: 42)
       ran = false
-      returned = original.or_else { |_e| ran = true; described_class.failure(code: :x, message: "x") }
+      returned = original.or_else do |_e|
+        ran = true
+        described_class.failure(code: :x, message: "x")
+      end
 
       expect(ran).to be(false)
       expect(returned).to be(original)
@@ -192,15 +209,15 @@ RSpec.describe Railsmith::Result do
 
     it "can recover and continue an and_then chain" do
       result = described_class.failure(code: :transient, message: "Retry")
-        .or_else { |_e| described_class.success(value: "default") }
-        .and_then { |v| described_class.success(value: "#{v}!") }
+                              .or_else { |_e| described_class.success(value: "default") }
+                              .and_then { |v| described_class.success(value: "#{v}!") }
 
       expect(result.value).to eq("default!")
     end
 
     it "preserves original meta in the recovered result" do
       result = described_class.failure(code: :err, message: "err", meta: { trace_id: "t2" })
-        .or_else { |_e| described_class.success(value: "ok") }
+                              .or_else { |_e| described_class.success(value: "ok") }
 
       expect(result.meta).to include(trace_id: "t2")
     end
@@ -228,8 +245,8 @@ RSpec.describe Railsmith::Result do
     it "can be chained after and_then for side effects" do
       logged = []
       described_class.success(value: 1)
-        .and_then { |v| described_class.success(value: v + 1) }
-        .on_success { |v| logged << v }
+                     .and_then { |v| described_class.success(value: v + 1) }
+                     .on_success { |v| logged << v }
 
       expect(logged).to eq([2])
     end
@@ -257,8 +274,8 @@ RSpec.describe Railsmith::Result do
     it "is usable as a logging tap in a chain" do
       errors = []
       described_class.success(value: 1)
-        .and_then { |_v| described_class.failure(code: :boom, message: "Boom") }
-        .on_failure { |e| errors << e.code }
+                     .and_then { |_v| described_class.failure(code: :boom, message: "Boom") }
+                     .on_failure { |e| errors << e.code }
 
       expect(errors).to eq(["boom"])
     end

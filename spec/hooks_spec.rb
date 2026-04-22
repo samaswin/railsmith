@@ -197,9 +197,9 @@ RSpec.describe Railsmith::Hooks do
         end
       end
 
-      expect {
+      expect do
         klass.call(action: :create, params: {}, context: {})
-      }.to raise_error(Railsmith::Hooks::AroundHookNotYieldedError, /forgetful/)
+      end.to raise_error(Railsmith::Hooks::AroundHookNotYieldedError, /forgetful/)
     end
   end
 
@@ -271,11 +271,11 @@ RSpec.describe Railsmith::Hooks do
     end
 
     it "rejects declaring both if: and unless: on the same hook" do
-      expect {
+      expect do
         service_class do
           before(:create, if: :x?, unless: :y?) { :noop }
         end
-      }.to raise_error(ArgumentError, /both if: and unless:/)
+      end.to raise_error(ArgumentError, /both if: and unless:/)
     end
   end
 

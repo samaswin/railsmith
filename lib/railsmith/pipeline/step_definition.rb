@@ -21,7 +21,7 @@ module Railsmith
       :condition, :polarity, :on_failure_continue,
       keyword_init: true
     ) do
-      def has_rollback?
+      def rollback?
         !rollback.nil?
       end
 
@@ -53,9 +53,7 @@ module Railsmith
 
         result = accumulated.dup
         inputs.each do |target_key, source_key|
-          unless result.key?(source_key)
-            raise Pipeline::ParamMappingError.new(name, source_key)
-          end
+          raise Pipeline::ParamMappingError.new(name, source_key) unless result.key?(source_key)
 
           next if target_key == source_key
 
@@ -70,7 +68,7 @@ module Railsmith
         case condition
         when Symbol
           guard_proc = guards[condition]
-          raise Pipeline::GuardNotFoundError.new(condition) unless guard_proc
+          raise Pipeline::GuardNotFoundError, condition unless guard_proc
 
           guard_proc.call(accumulated_params, context)
         when Proc

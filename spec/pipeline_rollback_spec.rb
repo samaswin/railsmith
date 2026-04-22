@@ -44,7 +44,7 @@ RSpec.describe "Pipeline rollback & compensation" do
 
     it "returns true for a proc rollback" do
       defn = Railsmith::Pipeline::StepDefinition.new(
-        name: :s, service: success_service(:go), action: :go, inputs: nil, rollback: -> (_r, _c) {}
+        name: :s, service: success_service(:go), action: :go, inputs: nil, rollback: ->(_r, _c) {}
       )
       expect(defn.has_rollback?).to be true
     end
@@ -85,7 +85,7 @@ RSpec.describe "Pipeline rollback & compensation" do
 
       make_rollback_service = lambda do |label, rollback_action|
         Class.new(Railsmith::BaseService) do
-          define_method(:go)          { Railsmith::Result.success(value: { "#{label}_id": 1 }) }
+          define_method(:go) { Railsmith::Result.success(value: { "#{label}_id": 1 }) }
           define_method(rollback_action) do
             rolled_back << label
             Railsmith::Result.success
@@ -103,7 +103,7 @@ RSpec.describe "Pipeline rollback & compensation" do
         step :step_c, service: fail_svc, action: :go
       end.call(params: {})
 
-      expect(rolled_back).to eq([:b, :a])
+      expect(rolled_back).to eq(%i[b a])
     end
 
     it "does not call rollback on the failing step" do
@@ -188,7 +188,7 @@ RSpec.describe "Pipeline rollback & compensation" do
       rollback_called = false
 
       svc = Class.new(Railsmith::BaseService) do
-        def go  = Railsmith::Result.success(value: { item_id: 99 })
+        def go = Railsmith::Result.success(value: { item_id: 99 })
         define_method(:undo) do
           rollback_called = true
           Railsmith::Result.success
@@ -197,7 +197,7 @@ RSpec.describe "Pipeline rollback & compensation" do
       fail_svc = failure_service(:go)
 
       build_pipeline do
-        step :s1, service: svc,      action: :go,  rollback: :undo
+        step :s1, service: svc,      action: :go, rollback: :undo
         step :s2, service: fail_svc, action: :go
       end.call(params: {})
 
@@ -217,7 +217,7 @@ RSpec.describe "Pipeline rollback & compensation" do
       fail_svc = failure_service(:go)
 
       build_pipeline do
-        step :reserve, service: svc,      action: :go,  rollback: :undo
+        step :reserve, service: svc,      action: :go, rollback: :undo
         step :pay,     service: fail_svc, action: :go
       end.call(params: { cart_id: 42 })
 
@@ -295,7 +295,7 @@ RSpec.describe "Pipeline rollback & compensation" do
       svc      = success_service(:go)
       fail_svc = failure_service(:go)
 
-      silent_proc = ->(_r, _c) { nil }
+      silent_proc = ->(_r, _c) {}
 
       pipeline = build_pipeline do
         step :s1, service: svc,      action: :go, rollback: silent_proc
@@ -330,7 +330,7 @@ RSpec.describe "Pipeline rollback & compensation" do
   describe "rollback failures" do
     it "attaches :rollback_failures to result meta when a rollback fails" do
       svc = Class.new(Railsmith::BaseService) do
-        def go   = Railsmith::Result.success(value: { id: 1 })
+        def go = Railsmith::Result.success(value: { id: 1 })
         def undo  = Railsmith::Result.failure(code: :unexpected, message: "rollback broke")
       end
       fail_svc = failure_service(:go)
@@ -351,7 +351,7 @@ RSpec.describe "Pipeline rollback & compensation" do
 
     it "omits :rollback_failures when all rollbacks succeed" do
       svc = Class.new(Railsmith::BaseService) do
-        def go   = Railsmith::Result.success
+        def go = Railsmith::Result.success
         def undo  = Railsmith::Result.success
       end
       fail_svc = failure_service(:go)
@@ -369,14 +369,14 @@ RSpec.describe "Pipeline rollback & compensation" do
       rolled_back = []
 
       svc_a = Class.new(Railsmith::BaseService) do
-        def go   = Railsmith::Result.success
+        def go = Railsmith::Result.success
         define_method(:undo) do
           rolled_back << :a
           Railsmith::Result.success
         end
       end
       svc_b = Class.new(Railsmith::BaseService) do
-        def go   = Railsmith::Result.success
+        def go = Railsmith::Result.success
         define_method(:undo) do
           rolled_back << :b
           Railsmith::Result.failure(message: "b rollback failed")
@@ -391,17 +391,17 @@ RSpec.describe "Pipeline rollback & compensation" do
       end.call(params: {})
 
       # b runs first (reverse), fails, then a still runs
-      expect(rolled_back).to eq([:b, :a])
+      expect(rolled_back).to eq(%i[b a])
     end
 
     it "collects all rollback failures when multiple rollbacks fail" do
       svc_a = Class.new(Railsmith::BaseService) do
-        def go   = Railsmith::Result.success
-        def undo  = Railsmith::Result.failure(message: "a failed")
+        def go = Railsmith::Result.success
+        def undo = Railsmith::Result.failure(message: "a failed")
       end
       svc_b = Class.new(Railsmith::BaseService) do
-        def go   = Railsmith::Result.success
-        def undo  = Railsmith::Result.failure(message: "b failed")
+        def go = Railsmith::Result.success
+        def undo = Railsmith::Result.failure(message: "b failed")
       end
       fail_svc = failure_service(:go)
 
@@ -418,7 +418,7 @@ RSpec.describe "Pipeline rollback & compensation" do
 
     it "preserves the primary failure error regardless of rollback outcome" do
       svc = Class.new(Railsmith::BaseService) do
-        def go   = Railsmith::Result.success
+        def go = Railsmith::Result.success
         def undo  = Railsmith::Result.failure(message: "rollback error")
       end
       fail_svc = failure_service(:go, code: :not_found, message: "primary error")
@@ -433,9 +433,10 @@ RSpec.describe "Pipeline rollback & compensation" do
       expect(result.error.code).to    eq("not_found")
     end
 
+    # rubocop:disable Lint/DuplicateMethods
     it "still sets :pipeline_name and :pipeline_step when rollbacks fail" do
-      svc = Class.new(Railsmith::BaseService) do
-        def go   = Railsmith::Result.success
+      Class.new(Railsmith::BaseService) do
+        def go = Railsmith::Result.success
         def undo  = Railsmith::Result.failure(message: "rb fail")
       end
       stub_const("RollbackPipeline", Class.new(Railsmith::Pipeline) do
@@ -452,6 +453,7 @@ RSpec.describe "Pipeline rollback & compensation" do
       expect(result.meta[:pipeline_name]).to eq("RollbackPipeline")
       expect(result.meta[:pipeline_step]).to eq(:boom)
     end
+    # rubocop:enable Lint/DuplicateMethods
   end
 
   # ---------------------------------------------------------------------------
@@ -464,12 +466,12 @@ RSpec.describe "Pipeline rollback & compensation" do
       Railsmith::Instrumentation.subscribe("pipeline.rollback.railsmith") { |_, p| events << p }
 
       svc_a = Class.new(Railsmith::BaseService) do
-        def go   = Railsmith::Result.success
-        def undo  = Railsmith::Result.success
+        def go = Railsmith::Result.success
+        def undo = Railsmith::Result.success
       end
       svc_b = Class.new(Railsmith::BaseService) do
-        def go   = Railsmith::Result.success
-        def undo  = Railsmith::Result.success
+        def go = Railsmith::Result.success
+        def undo = Railsmith::Result.success
       end
       fail_svc = failure_service(:go)
 
@@ -487,7 +489,7 @@ RSpec.describe "Pipeline rollback & compensation" do
       Railsmith::Instrumentation.subscribe("pipeline.rollback.railsmith") { |_, p| events << p }
 
       svc = Class.new(Railsmith::BaseService) do
-        def go   = Railsmith::Result.success
+        def go = Railsmith::Result.success
         def undo  = Railsmith::Result.success
       end
       fail_svc = failure_service(:go)
@@ -505,7 +507,7 @@ RSpec.describe "Pipeline rollback & compensation" do
       Railsmith::Instrumentation.subscribe("pipeline.rollback.railsmith") { |_, p| events << p }
 
       svc = Class.new(Railsmith::BaseService) do
-        def go   = Railsmith::Result.success
+        def go = Railsmith::Result.success
         def undo  = Railsmith::Result.failure(message: "bad")
       end
       fail_svc = failure_service(:go)
@@ -518,22 +520,23 @@ RSpec.describe "Pipeline rollback & compensation" do
       expect(events.first[:status]).to eq(:failure)
     end
 
+    # rubocop:disable Lint/DuplicateMethods
     it "includes :pipeline, :step, and numeric :duration in the rollback event" do
       events = []
       Railsmith::Instrumentation.subscribe("pipeline.rollback.railsmith") { |_, p| events << p }
 
       stub_const("RbInstrPipeline", Class.new(Railsmith::Pipeline) do
         step :s1,
-          service: Class.new(Railsmith::BaseService) {
-            def go   = Railsmith::Result.success
-            def undo  = Railsmith::Result.success
-          },
-          action: :go, rollback: :undo
+             service: Class.new(Railsmith::BaseService) {
+               def go = Railsmith::Result.success
+               def undo = Railsmith::Result.success
+             },
+             action: :go, rollback: :undo
         step :boom,
-          service: Class.new(Railsmith::BaseService) {
-            def go = Railsmith::Result.failure(message: "fail")
-          },
-          action: :go
+             service: Class.new(Railsmith::BaseService) {
+               def go = Railsmith::Result.failure(message: "fail")
+             },
+             action: :go
       end)
 
       RbInstrPipeline.call(params: {})
@@ -543,6 +546,7 @@ RSpec.describe "Pipeline rollback & compensation" do
       expect(event[:step]).to     eq(:s1)
       expect(event[:duration]).to be_a(Numeric)
     end
+    # rubocop:enable Lint/DuplicateMethods
 
     it "does not emit rollback events when no steps have rollback declared" do
       events = []
@@ -564,7 +568,7 @@ RSpec.describe "Pipeline rollback & compensation" do
       Railsmith::Instrumentation.subscribe("pipeline.rollback.railsmith") { |_, p| events << p }
 
       svc = Class.new(Railsmith::BaseService) do
-        def go   = Railsmith::Result.success
+        def go = Railsmith::Result.success
         def undo  = Railsmith::Result.success
       end
 

@@ -73,17 +73,12 @@ RSpec.describe "Pipeline rollback integration — CheckoutPipeline with compensa
   # ---------------------------------------------------------------------------
 
   def checkout_pipeline(cart:, inventory:, payment:, notification:)
-    _cart  = cart
-    _inv   = inventory
-    _pay   = payment
-    _notif = notification
-
     Class.new(Railsmith::Pipeline) do
-      step :validate_cart,     service: _cart,  action: :validate
-      step :reserve_inventory, service: _inv,   action: :reserve,    rollback: :unreserve
-      step :charge_payment,    service: _pay,   action: :charge,
-                               inputs: { amount: :cart_total },       rollback: :refund
-      step :send_confirmation, service: _notif, action: :send_receipt
+      step :validate_cart,     service: cart,         action: :validate
+      step :reserve_inventory, service: inventory,    action: :reserve, rollback: :unreserve
+      step :charge_payment,    service: payment,      action: :charge,
+                               inputs: { amount: :cart_total }, rollback: :refund
+      step :send_confirmation, service: notification, action: :send_receipt
     end
   end
 

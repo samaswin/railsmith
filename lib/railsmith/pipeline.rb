@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+# Railsmith — service pipeline and hook framework.
 module Railsmith
   require_relative "pipeline/errors"
   require_relative "pipeline/step_definition"
@@ -70,21 +71,23 @@ module Railsmith
       # @param on_failure_continue [Boolean]
       #   When true, a failure from this step does not halt the pipeline; subsequent
       #   steps run as if the step was skipped. The failed step is not rolled back.
+      # rubocop:disable Metrics/MethodLength
       def step(name, service:, action:, inputs: nil, rollback: nil, **options)
         condition, polarity = extract_step_condition(options)
         on_failure_continue = options.fetch(:on_failure_continue, false)
 
         step_definitions << StepDefinition.new(
-          name:               name.to_sym,
-          service:            service,
-          action:             action.to_sym,
-          inputs:             inputs,
-          rollback:           rollback,
-          condition:          condition,
-          polarity:           polarity,
+          name: name.to_sym,
+          service: service,
+          action: action.to_sym,
+          inputs: inputs,
+          rollback: rollback,
+          condition: condition,
+          polarity: polarity,
           on_failure_continue: on_failure_continue
         )
       end
+      # rubocop:enable Metrics/MethodLength
 
       # Register a named guard predicate for use in step +if:+/+unless:+ options.
       #

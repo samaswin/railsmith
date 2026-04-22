@@ -57,17 +57,12 @@ RSpec.describe "Pipeline integration — CheckoutPipeline" do
   # Defined fresh in each example so service stubs can be injected.
   # In real usage this would be a named class: class CheckoutPipeline < Railsmith::Pipeline
   def checkout_pipeline(cart:, inventory:, payment:, notification:)
-    _cart = cart
-    _inv  = inventory
-    _pay  = payment
-    _notif = notification
-
     Class.new(Railsmith::Pipeline) do
-      step :validate_cart,     service: _cart,  action: :validate
-      step :reserve_inventory, service: _inv,   action: :reserve
+      step :validate_cart,     service: cart,         action: :validate
+      step :reserve_inventory, service: inventory,    action: :reserve
       # inputs: renames :cart_total → :amount for the payment step
-      step :charge_payment,    service: _pay,   action: :charge,     inputs: { amount: :cart_total }
-      step :send_confirmation, service: _notif, action: :send_receipt
+      step :charge_payment,    service: payment,      action: :charge, inputs: { amount: :cart_total }
+      step :send_confirmation, service: notification, action: :send_receipt
     end
   end
 
@@ -127,10 +122,10 @@ RSpec.describe "Pipeline integration — CheckoutPipeline" do
         payment: payment_service, notification: notification_service
       )
 
-      result = pipeline.call(params: { user_id: 7 })  # cart_id: nil → failure
+      result = pipeline.call(params: { user_id: 7 }) # cart_id: nil → failure
 
       expect(result).to be_failure
-      expect(result.error.code).to    eq("validation_error")
+      expect(result.error.code).to eq("validation_error")
       expect(result.meta[:pipeline_step]).to eq(:validate_cart)
     end
 
@@ -147,7 +142,7 @@ RSpec.describe "Pipeline integration — CheckoutPipeline" do
         cart: cart_service, inventory: tracking_inv,
         payment: payment_service, notification: notification_service
       )
-      pipeline.call(params: {})  # no cart_id
+      pipeline.call(params: {}) # no cart_id
 
       expect(calls).to be_empty
     end
@@ -193,9 +188,7 @@ RSpec.describe "Pipeline integration — CheckoutPipeline" do
         payment: payment_service, notification: notification_service
       )
 
-      expect {
-        pipeline.call!(params: {})  # no cart_id
-      }.to raise_error(Railsmith::Failure) do |ex|
+      expect { pipeline.call!(params: {}) }.to raise_error(Railsmith::Failure) do |ex| # no cart_id
         expect(ex.result.meta[:pipeline_step]).to eq(:validate_cart)
       end
     end
@@ -271,10 +264,10 @@ RSpec.describe "Pipeline integration — CheckoutPipeline" do
 
       # :cart_total was renamed to :amount by inputs:, but :reservation_id comes through
       expect(received_by_payment).to include(
-        amount:         150,
-        item_count:     3,
+        amount: 150,
+        item_count: 3,
         reservation_id: "rsv-001",
-        user_id:        2
+        user_id: 2
       )
     end
   end

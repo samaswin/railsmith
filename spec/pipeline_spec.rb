@@ -39,7 +39,7 @@ RSpec.describe Railsmith::Pipeline do
 
       expect(pipeline.step_definitions.size).to eq(1)
       defn = pipeline.step_definitions.first
-      expect(defn.name).to   eq(:create_thing)
+      expect(defn.name).to eq(:create_thing)
       expect(defn.service).to be(svc)
       expect(defn.action).to  eq(:create)
       expect(defn.inputs).to  be_nil
@@ -73,7 +73,7 @@ RSpec.describe Railsmith::Pipeline do
     end
 
     it "returns AnonymousPipeline for anonymous classes" do
-      expect(build_pipeline {}.pipeline_name).to eq("AnonymousPipeline")
+      expect(build_pipeline {}.pipeline_name).to eq("AnonymousPipeline") # rubocop:disable Lint/EmptyBlock
     end
   end
 
@@ -111,7 +111,7 @@ RSpec.describe Railsmith::Pipeline do
     end
 
     it "returns success with nil value for an empty pipeline" do
-      pipeline = build_pipeline {}
+      pipeline = build_pipeline {} # rubocop:disable Lint/EmptyBlock
       result   = pipeline.call(params: { x: 1 })
       expect(result).to be_success
       expect(result.value).to be_nil
@@ -120,7 +120,7 @@ RSpec.describe Railsmith::Pipeline do
 
   describe ".call!" do
     it "returns the Result on success" do
-      svc    = success_service(:go)
+      svc = success_service(:go)
       pipeline = build_pipeline { step :s, service: svc, action: :go }
       expect { pipeline.call! }.not_to raise_error
     end
@@ -301,7 +301,7 @@ RSpec.describe Railsmith::Pipeline do
         step :step_c, service: svc_c, action: :go
       end.call(params: {})
 
-      expect(calls).to eq([:a, :b])
+      expect(calls).to eq(%i[a b])
     end
 
     it "returns a failure Result" do
@@ -313,6 +313,7 @@ RSpec.describe Railsmith::Pipeline do
       expect(result.error.message).to eq("bad input")
     end
 
+    # rubocop:disable Lint/DuplicateMethods
     it "attaches :pipeline_name to the failure meta" do
       stub_const("FailingPipeline", Class.new(Railsmith::Pipeline) do
         step :s, service: Class.new(Railsmith::BaseService) {
@@ -349,7 +350,7 @@ RSpec.describe Railsmith::Pipeline do
   describe "instrumentation" do
     it "emits a pipeline.step.railsmith event for each step" do
       events = []
-      Railsmith::Instrumentation.subscribe("pipeline.step.railsmith") do |name, payload|
+      Railsmith::Instrumentation.subscribe("pipeline.step.railsmith") do |_name, payload|
         events << payload
       end
 
@@ -414,6 +415,7 @@ RSpec.describe Railsmith::Pipeline do
       NamedPipeline.call(params: {})
       expect(events.first[:pipeline]).to eq("NamedPipeline")
     end
+    # rubocop:enable Lint/DuplicateMethods
 
     it "includes :duration (numeric) in step events" do
       events = []

@@ -19,7 +19,7 @@ module Railsmith
 
       # Append an entry, returning self for chaining.
       def add(entry)
-        @chain = @chain.append(entry)
+        @chain.append(entry)
         self
       end
 
@@ -30,9 +30,7 @@ module Railsmith
       end
 
       # The current chain (immutable snapshot).
-      def chain
-        @chain
-      end
+      attr_reader :chain
 
       def entries
         @chain.entries

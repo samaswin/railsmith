@@ -15,8 +15,8 @@ module Railsmith
         freeze
       end
 
-      def each(&block)
-        @entries.each(&block)
+      def each(&)
+        @entries.each(&)
       end
 
       def empty?
