@@ -31,7 +31,7 @@ module Railsmith
 
           def async_nested_write_payload(definition, parent_record, nested_params, mode)
             {
-              service_class: definition.service_class.name,
+              service_class: self.class.name,
               association: definition.name.to_s,
               parent_id: parent_record.id,
               nested_params: nested_params,

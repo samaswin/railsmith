@@ -50,6 +50,9 @@ jobs:
         with:
           ruby-version: ${{ matrix.ruby }}
           bundler-cache: true
+      - name: Debug pipeline runner source
+        run: |
+          bundle exec ruby -e 'require "railsmith/pipeline/runner"; loc = Railsmith::Pipeline::Runner.instance_method(:run_each_step).source_location; puts "run_each_step source_location=#{loc.inspect}"; puts File.readlines(loc.first)[(loc.last-1)..(loc.last+15)].join'
       - name: Run test suite
         run: bundle exec rspec
       - name: Pipeline smoke (no Rails app)

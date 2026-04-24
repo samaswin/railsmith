@@ -83,7 +83,7 @@ RSpec.describe "Railsmith::BaseService async nested writes" do
   end
 
   after(:all) do
-    %i[AnwOrder AnwAudit].each { |c| Object.send(:remove_const, c) if Object.const_defined?(c) }
+    %i[AnwOrder AnwAudit AnwOrderService AnwAuditService].each { |c| Object.send(:remove_const, c) if Object.const_defined?(c) }
   end
 
   before do
@@ -113,10 +113,16 @@ RSpec.describe "Railsmith::BaseService async nested writes" do
   end
 
   def build_order_service(audit_svc, async: true)
-    Class.new(Railsmith::BaseService) do
-      model AnwOrder
-      has_many :anw_audits, service: audit_svc, async: async
-    end
+    # Remove any previous definition so the spec can rebuild with different options.
+    Object.send(:remove_const, :AnwOrderService) if Object.const_defined?(:AnwOrderService)
+
+    Object.const_set(
+      :AnwOrderService,
+      Class.new(Railsmith::BaseService) {
+        model AnwOrder
+        has_many :anw_audits, service: audit_svc, async: async
+      }
+    )
   end
 
   # ---------------------------------------------------------------------------
@@ -155,7 +161,7 @@ RSpec.describe "Railsmith::BaseService async nested writes" do
                                               { attributes: { kind: "clicked" } }
                                             ])
       expect(payload[:mode]).to eq("create")
-      expect(payload[:service_class]).to eq(audit_service.name)
+      expect(payload[:service_class]).to eq("AnwOrderService")
     end
 
     it "propagates the request context (including request_id) into the job payload" do
