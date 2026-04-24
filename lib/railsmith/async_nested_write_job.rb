@@ -24,7 +24,7 @@ module Railsmith
   class AsyncNestedWriteJob < ActiveJob::Base
     def perform(service_class:, association:, parent_id:, nested_params:, mode:, context:)
       with_instrumented_failure(**failure_context(service_class, association, parent_id, mode)) do
-        perform_nested_write(
+        result = perform_nested_write(
           service_class: service_class,
           association: association,
           parent_id: parent_id,
@@ -32,6 +32,19 @@ module Railsmith
           mode: mode,
           context: context
         )
+
+        # The inline nested-write path returns a Result instead of raising on
+        # validation failures (e.g. blank required attrs on a child record).
+        # In a background job that is dangerous: the parent has already
+        # committed, so a silent Result.failure here means the child write was
+        # quietly dropped — no instrumentation, no retry, no dead-letter.
+        # Convert a failure Result into a raised Railsmith::Failure so the
+        # surrounding +with_instrumented_failure+ rescues it, emits
+        # +async_nested_write.failed.railsmith+, and re-raises for the queue
+        # adapter (Sidekiq, SolidQueue, GoodJob, …) to handle.
+        raise Railsmith::Failure, result if result.is_a?(Railsmith::Result) && result.failure?
+
+        result
       end
     end
 
