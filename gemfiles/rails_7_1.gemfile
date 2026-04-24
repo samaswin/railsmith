@@ -13,7 +13,8 @@ gem "actionpack", "~> 7.1.0"
 gem "activerecord", "~> 7.1.0"
 gem "parallel", "< 2.0"
 
-gem "sqlite3", ">= 2.1", "< 2.9"
+# Rails 7.1's sqlite adapter requires sqlite3 (~> 1.4).
+gem "sqlite3", "~> 1.4"
 gem "railties", "~> 7.1.0"
 gem "activejob", "~> 7.1.0"
 
