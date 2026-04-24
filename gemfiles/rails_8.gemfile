@@ -16,4 +16,4 @@ gem "timecop", "~> 0.9"
 
 gem "rubocop", "~> 1.21"
 
-gem "sqlite3", ">= 2.1"
+gem "sqlite3", ">= 2.1", "< 2.9.3"

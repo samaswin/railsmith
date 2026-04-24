@@ -19,7 +19,8 @@ gem "rubocop", "~> 1.21"
 
 gem "actionpack", ">= 7.0", "< 9.0"
 gem "activerecord", ">= 7.0", "< 9.0"
-gem "sqlite3", ">= 2.1"
+# sqlite3 2.9.3+ requires Ruby >= 3.2; CI still runs Rails 7.0/7.1 on 3.1.
+gem "sqlite3", ">= 2.1", "< 2.9.3"
 
 # Ruby 3.1 compatibility: transitive deps that require >= 3.2 in newer versions.
 # These pins are not needed on 3.2+ but don't hurt — they allow any version on newer Rubies.

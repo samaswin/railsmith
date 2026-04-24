@@ -11,7 +11,7 @@ gem "appraisal", "~> 2.5"
 gem "rubocop", "~> 1.21"
 gem "actionpack", "~> 7.1.0"
 gem "activerecord", "~> 7.1.0"
-gem "sqlite3", ">= 2.1"
+gem "sqlite3", ">= 2.1", "< 2.9.3"
 gem "railties", "~> 7.1.0"
 gem "activejob", "~> 7.1.0"
 
