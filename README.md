@@ -50,6 +50,16 @@ See [docs/quickstart.md](docs/quickstart.md) for a full walkthrough.
 
 ---
 
+## Examples (Sample App + Smoke Scripts)
+
+For runnable examples that exercise `Railsmith::Pipeline` and services the way a small app would (without shipping a full Rails skeleton in this gem repo), see the companion repository:
+
+- **`railsmith_sample`**: [`github.com/samaswin/railsmith_sample`](https://github.com/samaswin/railsmith_sample)
+
+It includes smoke scripts for checkout pipelines and async nested writes against both in-process and real queue backends (Redis/Postgres/RabbitMQ).
+
+---
+
 ## Result Contract
 
 Every service call returns a `Railsmith::Result`. You never rescue exceptions from service calls.
