@@ -10,7 +10,7 @@ railsmith_gem_file_list = lambda do
         f == ".ruby-version" ||
         f == ".tool-versions" ||
         f.start_with?(*%w[bin/ Gemfile gemfiles/ .gitignore .rspec spec/ .github/ .rubocop.yml
-                          railsmith_sample/ benchmarks/ script/])
+                          benchmarks/ script/])
     end
   end
 end

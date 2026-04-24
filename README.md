@@ -467,9 +467,8 @@ BUNDLE_GEMFILE=gemfiles/rails_7_0.gemfile bundle install
 BUNDLE_GEMFILE=gemfiles/rails_7_0.gemfile bundle exec rspec
 ```
 
-### Sample smoke & benchmark (optional)
+### Benchmark (optional)
 
-- `bundle exec ruby railsmith_sample/smoke/checkout_smoke.rb` — minimal pipeline smoke (no Rails app).
 - `ruby benchmarks/pipeline_overhead.rb` — coarse timing of pipeline vs sequential calls (see script header).
 
 To install locally: `bundle exec rake install`.

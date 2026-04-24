@@ -137,7 +137,6 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 ### Maintainer tooling & smoke
 
 - **Appraisal** — `Appraisals` + `gemfiles/rails_{7_0,7_1,7_2,8_0}.gemfile` for multi-Rails CI (`bundle exec appraisal install`).
-- **`railsmith_sample/smoke/checkout_smoke.rb`** — minimal no-Rails pipeline smoke (`bundle exec ruby railsmith_sample/smoke/checkout_smoke.rb` from gem root).
 - **`benchmarks/pipeline_overhead.rb`** — coarse micro-benchmark comparing pipeline vs sequential service calls (`ruby benchmarks/pipeline_overhead.rb`).
 - **`docs/guides/hooks.md`** / **`docs/guides/pipelines.md`** — short stubs linking to the canonical guides under `docs/`.
 

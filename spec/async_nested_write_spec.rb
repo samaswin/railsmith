@@ -83,7 +83,9 @@ RSpec.describe "Railsmith::BaseService async nested writes" do
   end
 
   after(:all) do
-    %i[AnwOrder AnwAudit AnwOrderService AnwAuditService].each { |c| Object.send(:remove_const, c) if Object.const_defined?(c) }
+    %i[AnwOrder AnwAudit AnwOrderService AnwAuditService].each do |constant|
+      Object.send(:remove_const, constant) if Object.const_defined?(constant)
+    end
   end
 
   before do
@@ -118,10 +120,10 @@ RSpec.describe "Railsmith::BaseService async nested writes" do
 
     Object.const_set(
       :AnwOrderService,
-      Class.new(Railsmith::BaseService) {
+      Class.new(Railsmith::BaseService) do
         model AnwOrder
         has_many :anw_audits, service: audit_svc, async: async
-      }
+      end
     )
   end
 
