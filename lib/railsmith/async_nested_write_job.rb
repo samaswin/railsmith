@@ -22,7 +22,7 @@ module Railsmith
   # failures emit an +async_nested_write.failed.railsmith+ event so the
   # app can alert.
   class AsyncNestedWriteJob < ActiveJob::Base
-    # rubocop:disable Metrics/MethodLength, Metrics/ParameterLists
+    # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
     def perform(service_class:, association:, parent_id:, nested_params:, mode:, context:)
       svc_class     = service_class.is_a?(String) ? Object.const_get(service_class) : service_class
       ctx           = Railsmith::Context.build(context)
@@ -44,14 +44,14 @@ module Railsmith
       Railsmith::Instrumentation.instrument(
         "async_nested_write.failed",
         association: association.to_sym,
-        parent_id:   parent_id,
-        service:     service_class.to_s,
-        mode:        mode.to_s,
+        parent_id: parent_id,
+        service: service_class.to_s,
+        mode: mode.to_s,
         error_class: e.class.name,
-        error:       e.message
+        error: e.message
       )
       raise
     end
-    # rubocop:enable Metrics/MethodLength, Metrics/ParameterLists
+    # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
   end
 end

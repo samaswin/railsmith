@@ -15,6 +15,8 @@ require_relative "railsmith/hooks"
 require_relative "railsmith/base_service"
 require_relative "railsmith/pipeline"
 require_relative "railsmith/controller_helpers"
+require_relative "railsmith/async_enqueuers"
+require_relative "railsmith/async_nested_write_job"
 
 require_relative "railsmith/railtie" if defined?(Rails::Railtie)
 

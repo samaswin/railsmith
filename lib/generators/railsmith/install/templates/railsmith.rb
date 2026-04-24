@@ -7,4 +7,24 @@ Railsmith.configure do |config|
   # Approved context_domain → service_domain pairs, e.g.:
   # config.cross_domain_allowlist = [{ from: :billing, to: :catalog }]
   config.on_cross_domain_violation = nil # optional Proc, called on each violation when strict_mode is true
+
+  # Async nested association writes (`async: true` on `has_many`/`has_one`)
+  #
+  # By default Railsmith uses ActiveJob via Railsmith::AsyncNestedWriteJob.
+  # This works with SolidQueue/SolidJob, GoodJob, DelayedJob, Sidekiq (via ActiveJob).
+  #
+  # If you want to override:
+  #   config.async_job_class = Railsmith::AsyncNestedWriteJob
+  #
+  # Sidekiq (native worker, no ActiveJob):
+  #   # config.async_job_class = RailsmithNestedWriteWorker
+  #
+  # Non-ActiveJob backends (e.g. Sneakers) can be supported by providing a custom enqueuer:
+  #   # config.async_job_class = RailsmithNestedWriteWorker
+  #   # config.async_enqueuer = ->(job_class, payload) { job_class.publish(payload) }
+  #
+  # Kicks-style publishers are supported out of the box if your class responds to:
+  #   - publish_async(payload) or publish(payload)
+  # Just set:
+  #   # config.async_job_class = MyKicksPublisher
 end

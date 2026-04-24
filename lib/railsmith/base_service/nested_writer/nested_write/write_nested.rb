@@ -80,9 +80,7 @@ module Railsmith
 
           def perform_nested_write(definition, parent_record, source_params, mode)
             nested_params = source_params[definition.name]
-            if definition.async?
-              return enqueue_nested_write(definition, parent_record, nested_params, mode)
-            end
+            return enqueue_nested_write(definition, parent_record, nested_params, mode) if definition.async?
 
             if definition.kind == :belongs_to
               write_belongs_to(definition, nested_params, parent_record, mode)
@@ -101,6 +99,7 @@ module Railsmith
           #
           # @raise [Railsmith::AsyncNotConfiguredError] when no async_job_class
           #   is configured on +Railsmith.configuration+.
+          # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
           def enqueue_nested_write(definition, parent_record, nested_params, mode)
             job_class = Railsmith.configuration.async_job_class
             unless job_class
@@ -111,31 +110,84 @@ module Railsmith
                     "to enable background nested writes."
             end
 
-            job = job_class.perform_later(
+            payload = {
               service_class: definition.service_class.name,
-              association:   definition.name.to_s,
-              parent_id:     parent_record.id,
+              association: definition.name.to_s,
+              parent_id: parent_record.id,
               nested_params: nested_params,
-              mode:          mode.to_s,
-              context:       context.to_h
-            )
+              mode: mode.to_s,
+              context: context.to_h
+            }
 
-            job_id = job.respond_to?(:job_id) ? job.job_id : nil
+            job_id = enqueue_async_job(job_class, payload)
 
             Railsmith::Instrumentation.instrument(
               "nested_write.enqueued",
               association: definition.name,
-              parent_id:   parent_record.id,
-              service:     definition.service_class.name,
-              job_id:      job_id,
-              mode:        mode
+              parent_id: parent_record.id,
+              service: definition.service_class.name,
+              job_id: job_id,
+              mode: mode
             )
 
             Result.success(
               value: nil,
-              meta:  { async: true, association: definition.name, job_id: job_id }
+              meta: { async: true, association: definition.name, job_id: job_id }
             )
           end
+          # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
+
+          # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
+          def enqueue_async_job(job_class, payload)
+            custom_enqueuer = Railsmith.configuration.async_enqueuer
+            if custom_enqueuer
+              job_or_id = custom_enqueuer.call(job_class, payload)
+              return job_or_id.job_id if job_or_id.respond_to?(:job_id)
+              return job_or_id if job_or_id.is_a?(String) || job_or_id.is_a?(Integer)
+
+              return nil
+            end
+
+            if job_class.respond_to?(:perform_later)
+              job = job_class.perform_later(**payload)
+              return job.job_id if job.respond_to?(:job_id)
+
+              return nil
+            end
+
+            if job_class.respond_to?(:perform_async)
+              # Sidekiq-style: job_class.perform_async(payload_hash)
+              return job_class.perform_async(payload)
+            end
+
+            if job_class.respond_to?(:publish_async)
+              # Kicks/Sneakers-style publishers often expose publish_async(payload_hash)
+              return job_class.publish_async(payload)
+            end
+
+            if job_class.respond_to?(:publish)
+              # Kicks/Sneakers-style publishers often expose publish(payload_hash)
+              job = job_class.publish(payload)
+              return job.job_id if job.respond_to?(:job_id)
+
+              return job if job.is_a?(String) || job.is_a?(Integer)
+            end
+
+            if job_class.respond_to?(:enqueue)
+              # Generic fallback: job_class.enqueue(payload_hash)
+              job = job_class.enqueue(payload)
+              return job.job_id if job.respond_to?(:job_id)
+
+              return nil
+            end
+
+            raise Railsmith::AsyncNotConfiguredError,
+                  "Railsmith.configuration.async_job_class (#{job_class}) does not support enqueueing. " \
+                  "Expected .perform_later(**payload) (ActiveJob), .perform_async(payload) (Sidekiq), " \
+                  ".publish_async(payload) / .publish(payload) (Kicks-style), " \
+                  "or configure Railsmith.configuration.async_enqueuer."
+          end
+          # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
 
           def nested_params_present?(source_params, definition)
             source_params.is_a?(Hash) && source_params.key?(definition.name)

@@ -28,6 +28,8 @@ module Railsmith
       extend ActiveSupport::Concern
 
       included do
+        next unless respond_to?(:rescue_from)
+
         rescue_from Railsmith::Failure do |exception|
           error = exception.result.error
           status = Railsmith::ControllerHelpers::ERROR_STATUS_MAP.fetch(

@@ -19,6 +19,7 @@ module Railsmith
       # @param kind         [Symbol]          :has_many, :has_one, or :belongs_to
       # @param service      [Class]           Railsmith::BaseService subclass for the associated records
       # @param options [Hash]            supported keys: :foreign_key, :dependent, :optional, :validate, :async
+      # rubocop:disable Metrics/MethodLength
       def initialize(name, kind, service:, **options)
         @name         = name.to_sym
         @kind         = kind.to_sym
@@ -37,6 +38,7 @@ module Railsmith
 
         freeze
       end
+      # rubocop:enable Metrics/MethodLength
 
       # Returns true when this association should be written in a background
       # job rather than inline inside the parent's transaction.

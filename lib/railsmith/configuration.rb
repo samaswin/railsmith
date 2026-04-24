@@ -6,7 +6,8 @@ module Railsmith
     attr_accessor :warn_on_cross_domain_calls, :strict_mode,
                   :cross_domain_allowlist, :on_cross_domain_violation,
                   :fail_on_arch_violations,
-                  :async_job_class
+                  :async_job_class,
+                  :async_enqueuer
 
     def initialize
       @warn_on_cross_domain_calls = true
@@ -16,7 +17,14 @@ module Railsmith
       @fail_on_arch_violations = false
       @custom_coercions = {}
       @global_hooks = nil
-      @async_job_class = nil
+      @async_job_class = default_async_job_class
+      @async_enqueuer = nil
+    end
+
+    def default_async_job_class
+      return nil unless defined?(Railsmith::AsyncNestedWriteJob)
+
+      Railsmith::AsyncNestedWriteJob
     end
 
     # Register a custom type coercion used by the input DSL.

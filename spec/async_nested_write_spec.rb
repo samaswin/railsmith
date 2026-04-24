@@ -4,23 +4,59 @@ require "spec_helper"
 
 # A fake ActiveJob-like class that records every `perform_later` call so we
 # can assert on enqueueing without pulling in the real ActiveJob runtime.
-class FakeRailsmithAsyncJob
-  class << self
-    attr_accessor :jobs
+module RailsmithAsyncNestedWriteSpecFakes
+  FakeJobHandle = Struct.new(:job_id)
 
-    def perform_later(**payload)
-      @jobs ||= []
-      job_id = "job-#{@jobs.size + 1}"
-      @jobs << { payload: payload, job_id: job_id }
-      FakeJobHandle.new(job_id)
-    end
+  class ActiveJobLike
+    class << self
+      attr_accessor :jobs
 
-    def reset!
-      @jobs = []
+      def perform_later(**payload)
+        @jobs ||= []
+        job_id = "job-#{@jobs.size + 1}"
+        @jobs << { payload: payload, job_id: job_id }
+        FakeJobHandle.new(job_id)
+      end
+
+      def reset!
+        @jobs = []
+      end
     end
   end
 
-  FakeJobHandle = Struct.new(:job_id)
+  class SidekiqLike
+    class << self
+      attr_accessor :jobs
+
+      def perform_async(payload)
+        @jobs ||= []
+        jid = "jid-#{@jobs.size + 1}"
+        @jobs << { payload: payload, job_id: jid }
+        jid
+      end
+
+      def reset!
+        @jobs = []
+      end
+    end
+  end
+
+  class KicksLike
+    class << self
+      attr_accessor :jobs
+
+      def publish(payload)
+        @jobs ||= []
+        token = "pub-#{@jobs.size + 1}"
+        @jobs << { payload: payload, job_id: token }
+        token
+      end
+
+      def reset!
+        @jobs = []
+      end
+    end
+  end
 end
 
 RSpec.describe "Railsmith::BaseService async nested writes" do
@@ -53,7 +89,9 @@ RSpec.describe "Railsmith::BaseService async nested writes" do
   before do
     AnwOrder.delete_all
     AnwAudit.delete_all
-    FakeRailsmithAsyncJob.reset!
+    RailsmithAsyncNestedWriteSpecFakes::ActiveJobLike.reset!
+    RailsmithAsyncNestedWriteSpecFakes::SidekiqLike.reset!
+    RailsmithAsyncNestedWriteSpecFakes::KicksLike.reset!
   end
 
   around do |ex|
@@ -86,7 +124,7 @@ RSpec.describe "Railsmith::BaseService async nested writes" do
   # ---------------------------------------------------------------------------
 
   describe "create with async: true has_many" do
-    before { Railsmith.configuration.async_job_class = FakeRailsmithAsyncJob }
+    before { Railsmith.configuration.async_job_class = RailsmithAsyncNestedWriteSpecFakes::ActiveJobLike }
 
     it "enqueues a job instead of writing nested records inline" do
       svc = build_order_service(audit_service)
@@ -108,8 +146,8 @@ RSpec.describe "Railsmith::BaseService async nested writes" do
       # Children are NOT written inline.
       expect(AnwAudit.count).to eq(0)
       # A job WAS enqueued with the nested payload.
-      expect(FakeRailsmithAsyncJob.jobs.size).to eq(1)
-      payload = FakeRailsmithAsyncJob.jobs.first[:payload]
+      expect(RailsmithAsyncNestedWriteSpecFakes::ActiveJobLike.jobs.size).to eq(1)
+      payload = RailsmithAsyncNestedWriteSpecFakes::ActiveJobLike.jobs.first[:payload]
       expect(payload[:association]).to eq("anw_audits")
       expect(payload[:parent_id]).to eq(AnwOrder.first.id)
       expect(payload[:nested_params]).to eq([
@@ -132,7 +170,7 @@ RSpec.describe "Railsmith::BaseService async nested writes" do
         context: { current_domain: :commerce, request_id: "req-xyz", actor_id: 99 }
       )
 
-      ctx = FakeRailsmithAsyncJob.jobs.first[:payload][:context]
+      ctx = RailsmithAsyncNestedWriteSpecFakes::ActiveJobLike.jobs.first[:payload][:context]
       expect(ctx[:request_id]).to eq("req-xyz")
       expect(ctx[:actor_id]).to eq(99)
       expect(ctx[:current_domain]).to eq(:commerce)
@@ -193,12 +231,66 @@ RSpec.describe "Railsmith::BaseService async nested writes" do
     end
   end
 
+  describe "create with a Sidekiq-like async_job_class" do
+    before { Railsmith.configuration.async_job_class = RailsmithAsyncNestedWriteSpecFakes::SidekiqLike }
+
+    it "enqueues via perform_async(payload) and stores the jid in meta" do
+      svc = build_order_service(audit_service)
+
+      result = svc.call(
+        action: :create,
+        params: {
+          attributes: { total: 50.00 },
+          anw_audits: [{ attributes: { kind: "viewed" } }]
+        },
+        context: {}
+      )
+
+      expect(result).to be_success
+      expect(RailsmithAsyncNestedWriteSpecFakes::SidekiqLike.jobs.size).to eq(1)
+      expect(RailsmithAsyncNestedWriteSpecFakes::SidekiqLike.jobs.first[:payload]).to include(
+        association: "anw_audits",
+        mode: "create"
+      )
+
+      audit_meta = result.meta.dig(:nested, :anw_audits)
+      expect(audit_meta[:job_id]).to eq("jid-1")
+    end
+  end
+
+  describe "create with a Kicks-style publisher async_job_class" do
+    before { Railsmith.configuration.async_job_class = RailsmithAsyncNestedWriteSpecFakes::KicksLike }
+
+    it "enqueues via publish(payload) and stores the token in meta" do
+      svc = build_order_service(audit_service)
+
+      result = svc.call(
+        action: :create,
+        params: {
+          attributes: { total: 50.00 },
+          anw_audits: [{ attributes: { kind: "viewed" } }]
+        },
+        context: {}
+      )
+
+      expect(result).to be_success
+      expect(RailsmithAsyncNestedWriteSpecFakes::KicksLike.jobs.size).to eq(1)
+      expect(RailsmithAsyncNestedWriteSpecFakes::KicksLike.jobs.first[:payload]).to include(
+        association: "anw_audits",
+        mode: "create"
+      )
+
+      audit_meta = result.meta.dig(:nested, :anw_audits)
+      expect(audit_meta[:job_id]).to eq("pub-1")
+    end
+  end
+
   # ---------------------------------------------------------------------------
   # Update path
   # ---------------------------------------------------------------------------
 
   describe "update with async: true has_many" do
-    before { Railsmith.configuration.async_job_class = FakeRailsmithAsyncJob }
+    before { Railsmith.configuration.async_job_class = RailsmithAsyncNestedWriteSpecFakes::ActiveJobLike }
 
     it "enqueues a job on update, propagating mode: :update" do
       svc = build_order_service(audit_service)
@@ -215,8 +307,8 @@ RSpec.describe "Railsmith::BaseService async nested writes" do
       )
 
       expect(AnwAudit.count).to eq(0)
-      expect(FakeRailsmithAsyncJob.jobs.size).to eq(1)
-      payload = FakeRailsmithAsyncJob.jobs.first[:payload]
+      expect(RailsmithAsyncNestedWriteSpecFakes::ActiveJobLike.jobs.size).to eq(1)
+      payload = RailsmithAsyncNestedWriteSpecFakes::ActiveJobLike.jobs.first[:payload]
       expect(payload[:mode]).to eq("update")
       expect(payload[:parent_id]).to eq(order.id)
     end
@@ -227,7 +319,7 @@ RSpec.describe "Railsmith::BaseService async nested writes" do
   # ---------------------------------------------------------------------------
 
   describe "#perform_nested_write_for_job" do
-    before { Railsmith.configuration.async_job_class = FakeRailsmithAsyncJob }
+    before { Railsmith.configuration.async_job_class = RailsmithAsyncNestedWriteSpecFakes::ActiveJobLike }
 
     it "re-runs the nested write inline when invoked by the job" do
       svc_class = build_order_service(audit_service)
