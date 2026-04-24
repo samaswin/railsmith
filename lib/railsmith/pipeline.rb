@@ -71,23 +71,11 @@ module Railsmith
       # @param on_failure_continue [Boolean]
       #   When true, a failure from this step does not halt the pipeline; subsequent
       #   steps run as if the step was skipped. The failed step is not rolled back.
-      # rubocop:disable Metrics/MethodLength
       def step(name, service:, action:, inputs: nil, rollback: nil, **options)
         condition, polarity = extract_step_condition(options)
-        on_failure_continue = options.fetch(:on_failure_continue, false)
-
-        step_definitions << StepDefinition.new(
-          name: name.to_sym,
-          service: service,
-          action: action.to_sym,
-          inputs: inputs,
-          rollback: rollback,
-          condition: condition,
-          polarity: polarity,
-          on_failure_continue: on_failure_continue
-        )
+        attrs = { name: name, service: service, action: action, inputs: inputs, rollback: rollback }
+        step_definitions << StepDefinition.new(**step_definition_attributes(attrs, condition, polarity, options))
       end
-      # rubocop:enable Metrics/MethodLength
 
       # Register a named guard predicate for use in step +if:+/+unless:+ options.
       #
@@ -150,6 +138,19 @@ module Railsmith
       end
 
       private
+
+      def step_definition_attributes(attrs, condition, polarity, options)
+        {
+          name: attrs.fetch(:name).to_sym,
+          service: attrs.fetch(:service),
+          action: attrs.fetch(:action).to_sym,
+          inputs: attrs[:inputs],
+          rollback: attrs[:rollback],
+          condition: condition,
+          polarity: polarity,
+          on_failure_continue: options.fetch(:on_failure_continue, false)
+        }
+      end
 
       def extract_step_condition(options)
         if options.key?(:if) && options.key?(:unless)

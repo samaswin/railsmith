@@ -10,6 +10,7 @@ AllCops:
   NewCops: enable
   Exclude:
     - "railsmith_sample/**/*"
+    - "gemfiles/*.gemfile"
     - "gemfiles/vendor/**/*"
 
 Style/StringLiterals:

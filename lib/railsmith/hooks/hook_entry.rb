@@ -15,26 +15,12 @@ module Railsmith
 
       attr_reader :type, :actions, :block, :condition, :polarity, :name, :only_domains
 
-      # rubocop:disable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
       def initialize(type:, actions:, block:, condition: nil, polarity: :if, name: nil, only_domains: nil)
-        raise ArgumentError, "type must be one of #{VALID_TYPES.inspect}" unless VALID_TYPES.include?(type)
-        unless VALID_POLARITIES.include?(polarity)
-          raise ArgumentError,
-                "polarity must be one of #{VALID_POLARITIES.inspect}"
-        end
-        raise ArgumentError, "hook block is required" if block.nil?
-        raise ArgumentError, "actions must be a non-empty Array" if actions.nil? || actions.empty?
-
-        @type = type
-        @actions = actions.map(&:to_sym).freeze
-        @block = block
-        @condition = condition
-        @polarity = polarity
-        @name = name&.to_sym
-        @only_domains = only_domains ? only_domains.map { |d| Context.normalize_current_domain(d) }.freeze : nil
+        validate_initialize_args!(type, polarity, block, actions)
+        assign_attributes({ type: type, actions: actions, block: block, condition: condition,
+                            polarity: polarity, name: name, only_domains: only_domains })
         freeze
       end
-      # rubocop:enable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
       # True when this hook targets the given action symbol.
       def applies_to?(action)
@@ -60,7 +46,49 @@ module Railsmith
 
       private
 
-      # rubocop:disable Metrics/MethodLength
+      def validate_initialize_args!(type, polarity, block, actions)
+        validate_type!(type)
+        validate_polarity!(polarity)
+        validate_block!(block)
+        validate_actions!(actions)
+      end
+
+      def assign_attributes(attrs)
+        @type = attrs.fetch(:type)
+        @actions = attrs.fetch(:actions).map(&:to_sym).freeze
+        @block = attrs.fetch(:block)
+        @condition = attrs[:condition]
+        @polarity = attrs.fetch(:polarity)
+        @name = attrs[:name]&.to_sym
+        @only_domains = normalize_only_domains(attrs[:only_domains])
+      end
+
+      def validate_type!(type)
+        return if VALID_TYPES.include?(type)
+
+        raise ArgumentError, "type must be one of #{VALID_TYPES.inspect}"
+      end
+
+      def validate_polarity!(polarity)
+        return if VALID_POLARITIES.include?(polarity)
+
+        raise ArgumentError, "polarity must be one of #{VALID_POLARITIES.inspect}"
+      end
+
+      def validate_block!(block)
+        raise ArgumentError, "hook block is required" if block.nil?
+      end
+
+      def validate_actions!(actions)
+        raise ArgumentError, "actions must be a non-empty Array" if actions.nil? || actions.empty?
+      end
+
+      def normalize_only_domains(only_domains)
+        return nil unless only_domains
+
+        only_domains.map { |domain| Context.normalize_current_domain(domain) }.freeze
+      end
+
       def evaluate_condition(instance)
         case condition
         when Symbol
@@ -68,16 +96,15 @@ module Railsmith
         when Proc
           # Lambdas: receive the service instance as an argument.
           # Non-lambda procs: instance_exec in the service context.
-          if condition.lambda?
-            condition.call(instance)
-          else
-            instance.instance_exec(&condition)
-          end
+          evaluate_proc_condition(instance)
         else
           raise ArgumentError, "unsupported condition type: #{condition.class}"
         end
       end
-      # rubocop:enable Metrics/MethodLength
+
+      def evaluate_proc_condition(instance)
+        condition.lambda? ? condition.call(instance) : instance.instance_exec(&condition)
+      end
     end
   end
 end

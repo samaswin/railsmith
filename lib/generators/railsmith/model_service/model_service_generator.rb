@@ -193,32 +193,55 @@ module Railsmith
         register_with_pipeline
       end
 
-      # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
       def register_with_pipeline
         return if options[:pipeline].to_s.strip.empty?
 
-        pipeline_path = locate_pipeline_file(options[:pipeline])
-        unless pipeline_path
-          say_status(
-            :warning,
-            "Could not find pipeline file for #{options[:pipeline]} — add the step manually",
-            :yellow
-          )
-          return
-        end
+        pipeline_path = ensure_pipeline_file
+        return unless pipeline_path
 
-        action_name = options[:pipeline_action].to_s.strip
-        action_name = resolver.declared_actions.first || "call" if action_name.empty?
-
-        step_name = class_name.split("::").last.underscore
-        full_svc   = (enclosing_modules + [service_class_name.split("::").last]).join("::")
-        step_line  = "  step :#{step_name}, service: #{full_svc}, action: :#{action_name}\n"
-
-        insert_into_file pipeline_path, step_line, before: /\n#{Regexp.escape(class_indent)}end\n?\z/m
+        insert_into_file(
+          pipeline_path,
+          build_pipeline_step_line,
+          before: /\n#{Regexp.escape(class_indent)}end\n?\z/m
+        )
       end
-      # rubocop:enable Metrics/MethodLength, Metrics/AbcSize
 
       private
+
+      def ensure_pipeline_file
+        pipeline_path = locate_pipeline_file(options[:pipeline])
+        return pipeline_path if pipeline_path
+
+        warn_missing_pipeline_file
+        nil
+      end
+
+      def warn_missing_pipeline_file
+        say_status(
+          :warning,
+          "Could not find pipeline file for #{options[:pipeline]} — add the step manually",
+          :yellow
+        )
+      end
+
+      def pipeline_action_name
+        explicit = options[:pipeline_action].to_s.strip
+        return explicit unless explicit.empty?
+
+        resolver.declared_actions.first || "call"
+      end
+
+      def pipeline_step_name
+        class_name.split("::").last.underscore
+      end
+
+      def pipeline_step_service_class
+        (enclosing_modules + [service_class_name.split("::").last]).join("::")
+      end
+
+      def build_pipeline_step_line
+        "  step :#{pipeline_step_name}, service: #{pipeline_step_service_class}, action: :#{pipeline_action_name}\n"
+      end
 
       def locate_pipeline_file(pipeline_class_name)
         underscore_name = pipeline_class_name.split("::").last.underscore

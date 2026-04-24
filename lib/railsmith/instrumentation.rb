@@ -20,9 +20,7 @@ module Railsmith
       # Always dispatches to plain Ruby subscribers; also emits to
       # ActiveSupport::Notifications when available for Rails integration.
       def instrument(event_name, payload = {}, &block)
-        unless Railsmith.configuration.instrumentation_enabled
-          return block&.call
-        end
+        return block&.call unless Railsmith.configuration.instrumentation_enabled
 
         full_name = "#{event_name}.#{EVENT_NAMESPACE}"
         result = nil

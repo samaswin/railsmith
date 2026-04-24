@@ -19,7 +19,6 @@ module Railsmith
       # @param kind         [Symbol]          :has_many, :has_one, or :belongs_to
       # @param service      [Class]           Railsmith::BaseService subclass for the associated records
       # @param options [Hash]            supported keys: :foreign_key, :dependent, :optional, :validate, :async
-      # rubocop:disable Metrics/MethodLength
       def initialize(name, kind, service:, **options)
         @name         = name.to_sym
         @kind         = kind.to_sym
@@ -30,15 +29,10 @@ module Railsmith
         @validate     = options.fetch(:validate, true)
         @async        = options.fetch(:async, false) ? true : false
 
-        if @async && ASYNC_INCOMPATIBLE_DEPENDENT.include?(@dependent)
-          raise ArgumentError,
-                "async: true is not compatible with dependent: #{@dependent.inspect} " \
-                "(cascading/child cleanup cannot be safely deferred past the parent transaction)"
-        end
+        validate_async_dependent_compatibility!
 
         freeze
       end
-      # rubocop:enable Metrics/MethodLength
 
       # Returns true when this association should be written in a background
       # job rather than inline inside the parent's transaction.
@@ -66,6 +60,15 @@ module Railsmith
       end
 
       private
+
+      def validate_async_dependent_compatibility!
+        return unless @async
+        return unless ASYNC_INCOMPATIBLE_DEPENDENT.include?(@dependent)
+
+        raise ArgumentError,
+              "async: true is not compatible with dependent: #{@dependent.inspect} " \
+              "(cascading/child cleanup cannot be safely deferred past the parent transaction)"
+      end
 
       def underscore_model_name(model_class)
         return "" unless model_class

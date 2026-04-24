@@ -47,22 +47,37 @@ module Railsmith
 
       attr_reader :instance, :action, :service_class
 
-      # rubocop:disable Metrics/AbcSize
       def resolve_chain
-        class_chain = service_class.respond_to?(:hook_registry) ? service_class.hook_registry.chain : HookChain.new
+        class_chain = resolve_class_chain
         # Global hooks with +only:+ filter by the *service* domain (the bounded
         # context declared on the class via `domain :commerce`), not the caller's
         # context domain. Hooks are a property of the service being invoked,
         # so service-declared domain is the natural grouping key.
-        service_domain = service_class.respond_to?(:domain) ? service_class.domain : nil
+        service_domain = resolve_service_domain
 
         # Global hooks wrap class hooks (execution-order outermost = declared first),
         # so they come first in the combined chain.
-        combined = HookChain.new.concat(@global_chain.for_domain(service_domain)).concat(class_chain)
-        applicable = combined.for_action(action).entries.select { |e| e.applicable?(instance) }
-        HookChain.new(applicable)
+        combined = combined_chain(service_domain, class_chain)
+        HookChain.new(applicable_entries(combined))
       end
-      # rubocop:enable Metrics/AbcSize
+
+      def resolve_class_chain
+        return HookChain.new unless service_class.respond_to?(:hook_registry)
+
+        service_class.hook_registry.chain
+      end
+
+      def resolve_service_domain
+        service_class.respond_to?(:domain) ? service_class.domain : nil
+      end
+
+      def combined_chain(service_domain, class_chain)
+        HookChain.new.concat(@global_chain.for_domain(service_domain)).concat(class_chain)
+      end
+
+      def applicable_entries(chain)
+        chain.for_action(action).entries.select { |entry| entry.applicable?(instance) }
+      end
 
       def run_befores(entries)
         entries.each do |entry|
@@ -96,26 +111,32 @@ module Railsmith
       # Wrap +next_call+ with +entry+'s around block, returning a new callable.
       # Enforces that the block invokes the wrapped action -- otherwise raises
       # +AroundHookNotYieldedError+ to surface the "forgot to yield" bug class.
-      # rubocop:disable Metrics/MethodLength
       def build_around_wrapper(entry, next_call)
         inst = instance
         action_name = @action
         lambda do
           called = false
-          yield_to_action = lambda do
-            called = true
-            next_call.call
-          end
+          yield_to_action = track_action_yield(next_call) { called = true }
           result = inst.instance_exec(yield_to_action, &entry.block)
-          unless called
-            raise AroundHookNotYieldedError.new(
-              service: inst.class, action: action_name, hook_name: entry.name
-            )
-          end
+          raise_around_not_yielded!(called, inst, action_name, entry)
           result
         end
       end
-      # rubocop:enable Metrics/MethodLength
+
+      def track_action_yield(next_call)
+        lambda do
+          yield
+          next_call.call
+        end
+      end
+
+      def raise_around_not_yielded!(called, inst, action_name, entry)
+        return if called
+
+        raise AroundHookNotYieldedError.new(
+          service: inst.class, action: action_name, hook_name: entry.name
+        )
+      end
     end
   end
 end

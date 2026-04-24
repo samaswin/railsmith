@@ -12,17 +12,11 @@ module Railsmith
                   :pipeline_detect_merge_collisions
 
     def initialize
-      @warn_on_cross_domain_calls = true
-      @strict_mode = false
-      @cross_domain_allowlist = []
-      @on_cross_domain_violation = nil
-      @fail_on_arch_violations = false
-      @custom_coercions = {}
-      @global_hooks = nil
-      @async_job_class = default_async_job_class
-      @async_enqueuer = nil
-      @instrumentation_enabled = true
-      @pipeline_detect_merge_collisions = false
+      set_default_flags
+      set_default_hook_state
+      set_default_async_config
+      set_default_instrumentation
+      set_default_pipeline_options
     end
 
     def default_async_job_class
@@ -90,25 +84,54 @@ module Railsmith
 
     private
 
-    # rubocop:disable Metrics/MethodLength
     def add_global_hook(type, actions, options, &block)
+      validate_hook_args!(actions, block)
+      global_hooks.add(build_global_hook_entry(type, actions, options, block))
+    end
+
+    def validate_hook_args!(actions, block)
       raise ArgumentError, "hook block is required" if block.nil?
       raise ArgumentError, "at least one action symbol is required" if actions.empty?
+    end
 
+    def build_global_hook_entry(type, actions, options, block)
       condition, polarity = extract_global_condition(options)
-      global_hooks.add(
-        Railsmith::Hooks::HookEntry.new(
-          type: type,
-          actions: actions,
-          block: block,
-          condition: condition,
-          polarity: polarity,
-          name: options[:name],
-          only_domains: options[:only]
-        )
+      Railsmith::Hooks::HookEntry.new(
+        type: type,
+        actions: actions,
+        block: block,
+        condition: condition,
+        polarity: polarity,
+        name: options[:name],
+        only_domains: options[:only]
       )
     end
-    # rubocop:enable Metrics/MethodLength
+
+    def set_default_flags
+      @warn_on_cross_domain_calls = true
+      @strict_mode = false
+      @cross_domain_allowlist = []
+      @on_cross_domain_violation = nil
+      @fail_on_arch_violations = false
+    end
+
+    def set_default_hook_state
+      @custom_coercions = {}
+      @global_hooks = nil
+    end
+
+    def set_default_async_config
+      @async_job_class = default_async_job_class
+      @async_enqueuer = nil
+    end
+
+    def set_default_instrumentation
+      @instrumentation_enabled = true
+    end
+
+    def set_default_pipeline_options
+      @pipeline_detect_merge_collisions = false
+    end
 
     def extract_global_condition(options)
       if options.key?(:if) && options.key?(:unless)

@@ -22,36 +22,82 @@ module Railsmith
   # failures emit an +async_nested_write.failed.railsmith+ event so the
   # app can alert.
   class AsyncNestedWriteJob < ActiveJob::Base
-    # rubocop:disable Metrics/AbcSize, Metrics/MethodLength
     def perform(service_class:, association:, parent_id:, nested_params:, mode:, context:)
-      svc_class     = service_class.is_a?(String) ? Object.const_get(service_class) : service_class
-      ctx           = Railsmith::Context.build(context)
-      mode_sym      = mode.to_sym
-      assoc_sym     = association.to_sym
+      with_instrumented_failure(**failure_context(service_class, association, parent_id, mode)) do
+        perform_nested_write(
+          service_class: service_class,
+          association: association,
+          parent_id: parent_id,
+          nested_params: nested_params,
+          mode: mode,
+          context: context
+        )
+      end
+    end
 
-      parent_model  = svc_class.model
-      parent_record = parent_model.find(parent_id)
+    private
 
-      svc = svc_class.new(params: {}, context: ctx)
-      svc.send(
-        :perform_nested_write_for_job,
-        assoc_sym,
-        parent_record,
-        nested_params,
-        mode_sym
+    def perform_nested_write(service_class:, association:, parent_id:, nested_params:, mode:, context:)
+      service_klass, railsmith_context, parent_record =
+        resolve_job_state(service_class, context, parent_id)
+      invoke_nested_write(
+        service_klass: service_klass,
+        association: association.to_sym,
+        parent_record: parent_record,
+        nested_params: nested_params,
+        mode: mode.to_sym,
+        railsmith_context: railsmith_context
       )
+    end
+
+    def failure_context(service_class, association, parent_id, mode)
+      { association: association, parent_id: parent_id, service_class: service_class, mode: mode }
+    end
+
+    def with_instrumented_failure(association:, parent_id:, service_class:, mode:)
+      yield
     rescue StandardError => e
+      instrument_failure(
+        association: association,
+        parent_id: parent_id,
+        service_class: service_class,
+        mode: mode,
+        error: e
+      )
+      raise
+    end
+
+    def resolve_service_class(service_class)
+      service_class.is_a?(String) ? Object.const_get(service_class) : service_class
+    end
+
+    def resolve_parent_record(service_klass, parent_id)
+      service_klass.model.find(parent_id)
+    end
+
+    def resolve_job_state(service_class, context, parent_id)
+      service_klass = resolve_service_class(service_class)
+      railsmith_context = Railsmith::Context.build(context)
+      parent_record = resolve_parent_record(service_klass, parent_id)
+      [service_klass, railsmith_context, parent_record]
+    end
+
+    def invoke_nested_write(service_klass:, association:, parent_record:, nested_params:, mode:, railsmith_context:)
+      service_klass
+        .new(params: {}, context: railsmith_context)
+        .send(:perform_nested_write_for_job, association, parent_record, nested_params, mode)
+    end
+
+    def instrument_failure(association:, parent_id:, service_class:, mode:, error:)
       Railsmith::Instrumentation.instrument(
         "async_nested_write.failed",
         association: association.to_sym,
         parent_id: parent_id,
         service: service_class.to_s,
         mode: mode.to_s,
-        error_class: e.class.name,
-        error: e.message
+        error_class: error.class.name,
+        error: error.message
       )
-      raise
     end
-    # rubocop:enable Metrics/AbcSize, Metrics/MethodLength
   end
 end

@@ -99,25 +99,28 @@ module Railsmith
 
         private
 
-        # rubocop:disable Metrics/MethodLength
         def register_hook(type, actions, options, &block)
+          validate_hook_args!(actions, block)
+          hook_registry.add(build_hook_entry(type, actions, options, block))
+        end
+
+        def validate_hook_args!(actions, block)
           raise ArgumentError, "hook block is required" if block.nil?
           raise ArgumentError, "at least one action symbol is required" if actions.empty?
+        end
 
+        def build_hook_entry(type, actions, options, block)
           condition, polarity = extract_condition(options)
-          hook_registry.add(
-            HookEntry.new(
-              type: type,
-              actions: actions,
-              block: block,
-              condition: condition,
-              polarity: polarity,
-              name: options[:name],
-              only_domains: nil # domain filtering is global-only
-            )
+          HookEntry.new(
+            type: type,
+            actions: actions,
+            block: block,
+            condition: condition,
+            polarity: polarity,
+            name: options[:name],
+            only_domains: nil # domain filtering is global-only
           )
         end
-        # rubocop:enable Metrics/MethodLength
 
         def extract_condition(options)
           if options.key?(:if) && options.key?(:unless)
