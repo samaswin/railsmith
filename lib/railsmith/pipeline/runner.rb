@@ -53,7 +53,7 @@ module Railsmith
         last_result = nil
         @pipeline_class.step_definitions.each do |step_def|
           step_outcome = run_one_step(step_def)
-          return step_outcome if step_outcome.is_a?(Result)
+          return step_outcome if step_outcome.is_a?(Result) && step_outcome.failure?
 
           last_result = step_outcome if step_outcome
         end

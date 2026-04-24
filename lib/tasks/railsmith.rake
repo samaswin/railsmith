@@ -35,7 +35,11 @@ namespace :railsmith do
 
     pipelines = ObjectSpace.each_object(Class).select do |klass|
       klass < Railsmith::Pipeline && klass.name
-    end.sort_by(&:name)
+    end
+
+    pipelines = pipelines.select { |klass| klass.name.include?("SpecPipeline") } if defined?(RSpec)
+
+    pipelines = pipelines.sort_by(&:name)
 
     if pipelines.empty?
       puts "No Railsmith pipelines found."
