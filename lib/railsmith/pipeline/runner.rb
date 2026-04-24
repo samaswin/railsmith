@@ -70,7 +70,7 @@ module Railsmith
             result: step_result
           )
           last_result = step_result
-          merge_value_into_accumulated(step_result.value)
+          merge_value_into_accumulated(step_result.value, step_def)
         end
 
         # An empty pipeline succeeds with nil value; non-empty returns last step's result.
@@ -164,8 +164,19 @@ module Railsmith
       # Merge a step's result value into accumulated params, but only when
       # the value is a Hash. Non-Hash values (ActiveRecord objects, etc.) are
       # skipped so callers can still return domain objects without polluting params.
-      def merge_value_into_accumulated(value)
+      def merge_value_into_accumulated(value, step_def)
         return unless value.is_a?(Hash)
+
+        if Railsmith.configuration.pipeline_detect_merge_collisions
+          value.each do |key, incoming|
+            next unless @accumulated_params.key?(key)
+
+            existing = @accumulated_params[key]
+            next if existing == incoming
+
+            raise Pipeline::ParamCollisionError.new(step_def.name, key, existing, incoming)
+          end
+        end
 
         @accumulated_params = @accumulated_params.merge(value)
       end

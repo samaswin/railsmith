@@ -1,6 +1,14 @@
 # frozen_string_literal: true
 
 Railsmith.configure do |config|
+  # Set false to skip ActiveSupport::Notifications + plain-Ruby subscribers for
+  # all Railsmith instrumentation (service.call, pipelines, cross-domain, etc.).
+  # config.instrumentation_enabled = false
+
+  # When true, merging a step's Hash result into accumulated params raises if a key
+  # already exists with a different value (default false — last merge wins).
+  # config.pipeline_detect_merge_collisions = true
+
   config.warn_on_cross_domain_calls = true
   config.strict_mode = false
   config.fail_on_arch_violations = false # set true (or use RAILSMITH_FAIL_ON_ARCH_VIOLATIONS) to fail CI on arch checks

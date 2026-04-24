@@ -3,7 +3,10 @@
 require "spec_helper"
 
 RSpec.describe Railsmith::Instrumentation do
-  after { described_class.reset! }
+  after do
+    described_class.reset!
+    Railsmith.configuration.instrumentation_enabled = true
+  end
 
   describe ".instrument" do
     it "returns the block result" do
@@ -33,6 +36,17 @@ RSpec.describe Railsmith::Instrumentation do
       described_class.instrument("service.call", { domain: :billing, action: :create }) { nil }
 
       expect(payloads.first).to eq({ domain: :billing, action: :create })
+    end
+
+    it "runs the block but skips subscribers and AS::Notifications when instrumentation is disabled" do
+      Railsmith.configuration.instrumentation_enabled = false
+      payloads = []
+      described_class.subscribe { |_, payload| payloads << payload }
+
+      result = described_class.instrument("service.call", { domain: :x }) { :done }
+
+      expect(result).to eq(:done)
+      expect(payloads).to be_empty
     end
   end
 

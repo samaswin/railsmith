@@ -19,7 +19,8 @@ module Railsmith
 
       # Append an entry, returning self for chaining.
       def add(entry)
-        @chain.append(entry)
+        next_chain = @chain.append(entry)
+        @chain = next_chain
         self
       end
 

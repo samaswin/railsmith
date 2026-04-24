@@ -190,6 +190,7 @@ module Railsmith
         end
 
         template "model_service.rb.tt", target_file
+        register_with_pipeline
       end
 
       # rubocop:disable Metrics/MethodLength, Metrics/AbcSize

@@ -128,13 +128,18 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 - **`rake railsmith:pipelines`** — lists all `Railsmith::Pipeline` subclasses discovered in the application along with their declared steps (name, service, action, and any rollback or condition options).
 
-- **`rails g railsmith:model_service` pipeline registration** — the generator accepts an optional `--pipeline=CheckoutPipeline` flag that emits a commented-out `step` declaration in the target pipeline class when the pipeline file already exists, making it easier to wire a new service into an existing workflow.
+- **`rails g railsmith:model_service` pipeline registration** — optional `--pipeline=CheckoutPipeline` (and `--pipeline_action=…`) appends a `step` line to an existing pipeline file after the service is generated, when the pipeline Ruby file can be resolved under `app/pipelines/` or `app/domains/**/pipelines/`.
 
-### Sample app
+- **Optional param merge collision detection** — `Railsmith.configuration.pipeline_detect_merge_collisions` (default `false`). When `true`, merging a step's Hash `result.value` raises `Railsmith::Pipeline::ParamCollisionError` if a key already exists with a different value; same-value re-merges are allowed.
 
-- `railsmith_sample/app/services/audited_post_service.rb` — demonstrates before/after/around hooks for audit logging, event publishing, and timing on a single service.
-- `railsmith_sample/app/services/rate_limited_service.rb` — demonstrates a named hook on a parent class with a subclass that opts out via `skip_hook`.
-- `railsmith_sample/app/pipelines/checkout_pipeline.rb` — end-to-end CheckoutPipeline smoke test exercising param forwarding, rollback, and conditional coupon step.
+- **`Railsmith.configuration.instrumentation_enabled`** — defaults to `true`. Set to `false` to skip ActiveSupport::Notifications emission and plain-Ruby `Railsmith::Instrumentation` subscribers for all gem instrumentation while still running the wrapped code.
+
+### Maintainer tooling & smoke
+
+- **Appraisal** — `Appraisals` + `gemfiles/rails_{7_0,7_1,7_2,8_0}.gemfile` for multi-Rails CI (`bundle exec appraisal install`).
+- **`railsmith_sample/smoke/checkout_smoke.rb`** — minimal no-Rails pipeline smoke (`bundle exec ruby railsmith_sample/smoke/checkout_smoke.rb` from gem root).
+- **`benchmarks/pipeline_overhead.rb`** — coarse micro-benchmark comparing pipeline vs sequential service calls (`ruby benchmarks/pipeline_overhead.rb`).
+- **`docs/guides/hooks.md`** / **`docs/guides/pipelines.md`** — short stubs linking to the canonical guides under `docs/`.
 
 ### Added — Request ID propagation (`railsmith_context`)
 
@@ -151,7 +156,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Documentation
 
-- New guide: [`docs/pipelines.md`](docs/pipelines.md) — Pipeline DSL walkthrough (CheckoutPipeline example, param forwarding, rollback, conditional steps, instrumentation, best practices).
+- New guide: [`docs/pipelines.md`](docs/pipelines.md) — Pipeline DSL walkthrough (CheckoutPipeline example, param forwarding, merge collision rules, rollback, conditional steps, instrumentation opt-out, best practices).
 - [`docs/hooks.md`](docs/hooks.md) — hook DSL, execution order, inheritance, global hooks, introspection, common patterns.
 - [RFC: Pipelines & Hooks](docs/rfcs/1.3.0-pipelines-and-hooks.md), [ADR-0001: Rollback Ordering](docs/adrs/0001-rollback-ordering.md), [ADR-0002: Hook Inheritance Rules](docs/adrs/0002-hook-inheritance-rules.md), [ADR-0003: Pipeline Context Propagation](docs/adrs/0003-pipeline-context-propagation.md) — design references.
 - [README](README.md) — request ID section, `async: true` in the association example, optional `async_job_class` in configuration sample.

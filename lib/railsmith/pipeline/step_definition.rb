@@ -25,6 +25,12 @@ module Railsmith
         !rollback.nil?
       end
 
+      # rubocop:disable Naming/PredicatePrefix -- public name used in docs/specs
+      def has_rollback?
+        rollback?
+      end
+      # rubocop:enable Naming/PredicatePrefix
+
       def continue_on_failure?
         !!on_failure_continue
       end

@@ -433,6 +433,7 @@ See [Migration](MIGRATION.md#embedding-architecture-checks-from-ruby) for option
 - [Associations](docs/associations.md) — association DSL, eager loading, nested CRUD, cascading destroy, async nested writes
 - [Pipelines](docs/pipelines.md) — sequential service composition, param forwarding, rollback, conditional steps, instrumentation
 - [Hooks](docs/hooks.md) — before/after/around DSL, conditional hooks, inheritance, global hooks, introspection
+- [Pipelines (guides path)](docs/guides/pipelines.md) / [Hooks (guides path)](docs/guides/hooks.md) — stubs linking to the canonical guides above
 - [call!](docs/call-bang.md) — raising variant, controller integration, `ControllerHelpers`, `railsmith_context` / request IDs
 - [Cookbook](docs/cookbook.md) — CRUD, bulk, inputs, associations, domain context, error mapping, observability
 - [Legacy Adoption Guide](docs/legacy-adoption.md) — incremental migration strategy
@@ -449,12 +450,27 @@ bundle exec rake spec   # run tests
 bin/console     # interactive prompt
 ```
 
-CI runs the suite against Rails 7 and Rails 8 using [`gemfiles/rails_7.gemfile`](gemfiles/rails_7.gemfile) and [`gemfiles/rails_8.gemfile`](gemfiles/rails_8.gemfile) (Ruby 3.1–3.3; Rails 8 is not paired with Ruby 3.1 in CI). To reproduce a matrix cell locally:
+### Multi-Rails matrix (Appraisal)
+
+Appraisal gemfiles live under [`gemfiles/`](gemfiles/). After `bundle install`, generate or refresh lockfiles with `bundle exec appraisal install`. Run the suite against each combination:
 
 ```bash
-BUNDLE_GEMFILE=gemfiles/rails_7.gemfile bundle install
-BUNDLE_GEMFILE=gemfiles/rails_7.gemfile bundle exec rspec
+bundle exec appraisal rails-7-0 rake spec
+bundle exec appraisal rails-8-0 rake spec
+# or: bundle exec appraisal rake spec   # runs the default task for each gemfile
 ```
+
+To reproduce one cell without the Appraisal CLI:
+
+```bash
+BUNDLE_GEMFILE=gemfiles/rails_7_0.gemfile bundle install
+BUNDLE_GEMFILE=gemfiles/rails_7_0.gemfile bundle exec rspec
+```
+
+### Sample smoke & benchmark (optional)
+
+- `bundle exec ruby railsmith_sample/smoke/checkout_smoke.rb` — minimal pipeline smoke (no Rails app).
+- `ruby benchmarks/pipeline_overhead.rb` — coarse timing of pipeline vs sequential calls (see script header).
 
 To install locally: `bundle exec rake install`.
 

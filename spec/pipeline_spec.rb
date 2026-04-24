@@ -273,6 +273,38 @@ RSpec.describe Railsmith::Pipeline do
         expect(received).to include(foo: 42)
       end
     end
+
+    context "merge collisions (pipeline_detect_merge_collisions: true)" do
+      around do |example|
+        prev = Railsmith.configuration.pipeline_detect_merge_collisions
+        Railsmith.configuration.pipeline_detect_merge_collisions = true
+        example.run
+      ensure
+        Railsmith.configuration.pipeline_detect_merge_collisions = prev
+      end
+
+      it "allows the same key when the new value equals the existing value" do
+        svc = success_service(:go, value: { token: "abc" })
+        pipeline = build_pipeline do
+          step :first, service: svc, action: :go
+          step :second, service: svc, action: :go
+        end
+
+        expect { pipeline.call(params: { token: "abc" }) }.not_to raise_error
+      end
+
+      it "raises ParamCollisionError when a merged key would change an existing value" do
+        a = success_service(:go, value: { id: 1 })
+        b = success_service(:go, value: { id: 2 })
+        pipeline = build_pipeline do
+          step :first, service: a, action: :go
+          step :second, service: b, action: :go
+        end
+
+        expect { pipeline.call(params: {}) }
+          .to raise_error(Railsmith::Pipeline::ParamCollisionError, /:second.*:id/m)
+      end
+    end
   end
 
   # ---------------------------------------------------------------------------

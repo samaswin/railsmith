@@ -17,5 +17,17 @@ module Railsmith
         super("Pipeline guard :#{guard_name} is not defined on this pipeline")
       end
     end
+
+    # Raised when a step's Hash +result.value+ would overwrite an existing
+    # accumulated param key with a different value.
+    class ParamCollisionError < StandardError
+      def initialize(step_name, key, existing_value, incoming_value)
+        super(
+          "Pipeline step :#{step_name} merged :#{key} but it already exists with a different value " \
+          "(existing: #{existing_value.inspect}, incoming: #{incoming_value.inspect}). " \
+          "Rename keys in earlier steps or use inputs: on a later step."
+        )
+      end
+    end
   end
 end

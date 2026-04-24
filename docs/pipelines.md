@@ -195,6 +195,18 @@ step :charge_payment, service: PaymentService, action: :charge,
 
 The rename is applied only to the params forwarded to that step — `accumulated_params` retains the original `:cart_total` key. When a source key listed in `inputs:` is absent, `Railsmith::Pipeline::ParamMappingError` is raised with the step name and missing key.
 
+### Optional merge collision detection
+
+By default, later steps **overwrite** existing keys in accumulated params when their `result.value` is a Hash (last merge wins). That supports common flows such as refining `:cart_total` after a coupon step.
+
+To catch accidental overwrites during development, enable strict checks:
+
+```ruby
+Railsmith.configure { |c| c.pipeline_detect_merge_collisions = true }
+```
+
+With this flag, if a merged key already exists and the new value is **not equal** (`==`) to the existing one, `Railsmith::Pipeline::ParamCollisionError` is raised. Re-merging the same key with the **same** value is always allowed.
+
 ---
 
 ## Fail-fast behavior
@@ -332,7 +344,7 @@ end
 
 ## Instrumentation
 
-Three ActiveSupport instrumentation events are emitted per pipeline run:
+Four ActiveSupport instrumentation events are emitted per pipeline run:
 
 | Event | When fired | Payload keys |
 |-------|-----------|--------------|
@@ -340,6 +352,14 @@ Three ActiveSupport instrumentation events are emitted per pipeline run:
 | `pipeline.step.skipped.railsmith` | When a conditional step is skipped | `:pipeline`, `:step` |
 | `pipeline.rollback.railsmith` | After each rollback handler runs | `:pipeline`, `:step`, `:status`, `:duration` |
 | `pipeline.railsmith` | Once, after the entire run | `:pipeline`, `:status`, `:duration` |
+
+To disable **all** Railsmith instrumentation (pipeline events, `service.call` spans, cross-domain warnings, etc.) in environments where subscribers add unacceptable overhead, set:
+
+```ruby
+Railsmith.configure { |c| c.instrumentation_enabled = false }
+```
+
+The wrapped work still runs; only notifications and plain-Ruby subscribers are skipped.
 
 Subscribe with ActiveSupport::Notifications as usual:
 

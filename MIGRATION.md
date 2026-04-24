@@ -90,6 +90,22 @@ end
 
 ---
 
+### Instrumentation opt-out (additive, opt-in)
+
+`Railsmith.configuration.instrumentation_enabled` defaults to `true`. Set it to `false` to skip emitting to `ActiveSupport::Notifications` and to plain-Ruby `Railsmith::Instrumentation` subscribers for **all** gem instrumentation (including pipeline step events and per-action `service.call` spans). The underlying service or pipeline work is unchanged.
+
+**No migration required.** Default behaviour matches previous releases.
+
+---
+
+### Pipeline merge collision detection (additive, opt-in)
+
+`Railsmith.configuration.pipeline_detect_merge_collisions` defaults to `false`. Set it to `true` if you want the pipeline runner to raise `Railsmith::Pipeline::ParamCollisionError` when a step's Hash `result.value` would set a key that already exists in accumulated params to a **different** value. Many real pipelines intentionally refine keys (for example updating `:cart_total` after a discount); leave the flag off unless you want strict guard rails.
+
+**No migration required.**
+
+---
+
 ### Result chaining (additive, opt-in)
 
 Four new methods are available on every `Railsmith::Result`:

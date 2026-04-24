@@ -7,7 +7,9 @@ module Railsmith
                   :cross_domain_allowlist, :on_cross_domain_violation,
                   :fail_on_arch_violations,
                   :async_job_class,
-                  :async_enqueuer
+                  :async_enqueuer,
+                  :instrumentation_enabled,
+                  :pipeline_detect_merge_collisions
 
     def initialize
       @warn_on_cross_domain_calls = true
@@ -19,6 +21,8 @@ module Railsmith
       @global_hooks = nil
       @async_job_class = default_async_job_class
       @async_enqueuer = nil
+      @instrumentation_enabled = true
+      @pipeline_detect_merge_collisions = false
     end
 
     def default_async_job_class

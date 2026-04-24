@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "fileutils"
 require "tmpdir"
 require "rails/generators"
 require "railsmith"
@@ -338,6 +339,27 @@ RSpec.describe Railsmith::Generators::ModelServiceGenerator do
   end
 
   # ── Phase 4: combined --inputs --associations ────────────────────────────────
+
+  it "appends a pipeline step when --pipeline points at an existing pipeline file" do
+    Dir.mktmpdir("railsmith-model-generator-spec") do |temp_dir|
+      pipeline_dir = File.join(temp_dir, "app/pipelines")
+      FileUtils.mkdir_p(pipeline_dir)
+      File.write(
+        File.join(pipeline_dir, "checkout_pipeline.rb"),
+        <<~RUBY
+          # frozen_string_literal: true
+
+          class CheckoutPipeline < Railsmith::Pipeline
+          end
+        RUBY
+      )
+
+      run_generator(["User", "--actions=create", "--pipeline=CheckoutPipeline"], temp_dir)
+
+      pipeline_body = File.read(File.join(pipeline_dir, "checkout_pipeline.rb"))
+      expect(pipeline_body).to include("step :user, service: UserService, action: :create")
+    end
+  end
 
   it "generates both input and association blocks when both flags are given" do
     reflection = double(macro: :has_many, name: :items)

@@ -52,5 +52,7 @@ jobs:
           bundler-cache: true
       - name: Run test suite
         run: bundle exec rspec
+      - name: Pipeline smoke (no Rails app)
+        run: bundle exec ruby railsmith_sample/smoke/checkout_smoke.rb
       - name: Railsmith arch check (fixture smoke)
         run: RAILSMITH_PATHS=spec/fixtures/controllers RAILSMITH_FORMAT=json bundle exec rake railsmith:arch_check

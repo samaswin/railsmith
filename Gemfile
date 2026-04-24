@@ -13,6 +13,8 @@ gem "simplecov", require: false
 
 gem "timecop", "~> 0.9"
 
+gem "appraisal", "~> 2.5"
+
 gem "rubocop", "~> 1.21"
 
 gem "actionpack", ">= 7.0", "< 9.0"
