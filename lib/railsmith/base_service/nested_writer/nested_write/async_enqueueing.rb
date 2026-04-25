@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "json"
+
 module Railsmith
   class BaseService
     module NestedWriter
@@ -102,7 +104,8 @@ module Railsmith
 
             # Sidekiq 7+ (strict_args!) rejects non-JSON-native arg types (e.g. Symbol keys).
             # Keep the payload JSON-safe for Sidekiq-style enqueueing.
-            job_class.perform_async(payload.deep_stringify_keys)
+            json_native_payload = JSON.parse(JSON.generate(payload.deep_stringify_keys))
+            job_class.perform_async(json_native_payload)
           end
 
           def try_enqueue_via_publish_async(job_class, payload)

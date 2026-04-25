@@ -257,8 +257,8 @@ RSpec.describe "Railsmith::BaseService async nested writes" do
       expect(result).to be_success
       expect(RailsmithAsyncNestedWriteSpecFakes::SidekiqLike.jobs.size).to eq(1)
       expect(RailsmithAsyncNestedWriteSpecFakes::SidekiqLike.jobs.first[:payload]).to include(
-        association: "anw_audits",
-        mode: "create"
+        "association" => "anw_audits",
+        "mode" => "create"
       )
 
       audit_meta = result.meta.dig(:nested, :anw_audits)
