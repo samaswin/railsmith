@@ -100,7 +100,9 @@ module Railsmith
           def try_enqueue_via_perform_async(job_class, payload)
             return nil unless job_class.respond_to?(:perform_async)
 
-            job_class.perform_async(payload)
+            # Sidekiq 7+ (strict_args!) rejects non-JSON-native arg types (e.g. Symbol keys).
+            # Keep the payload JSON-safe for Sidekiq-style enqueueing.
+            job_class.perform_async(payload.deep_stringify_keys)
           end
 
           def try_enqueue_via_publish_async(job_class, payload)
