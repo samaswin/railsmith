@@ -1,8 +1,86 @@
 # Railsmith
 
-Railsmith is a service-layer gem for Rails. It standardizes domain-oriented service boundaries with sensible defaults for CRUD operations, bulk operations, result handling, and cross-domain enforcement.
+Railsmith helps you manage complex multi-step workflows in Rails apps — the kind where business logic spans multiple models, touches external services, and needs clear success/failure handling at every step.
+
+It is not a replacement for Rails models or controllers. It's for the cases where those alone aren't enough.
 
 **Requirements**: Ruby >= 3.1.0, Rails 7.0–8.x
+
+---
+
+## Structured results, always
+
+Every service call returns a `Railsmith::Result`. Success or failure, the shape is always the same — no exceptions to rescue, no inconsistent return values.
+
+```ruby
+result = OrderService.call(action: :create, params: order_params, context: ctx)
+
+if result.success?
+  render json: result.value, status: :created
+else
+  render json: result.error.to_h, status: :unprocessable_entity
+end
+```
+
+```ruby
+result.success?       # => true / false
+result.value          # => the returned object or data
+result.error.code     # => "validation_error" | "not_found" | "conflict" | "unauthorized" | "unexpected"
+result.error.message  # => human-readable message
+result.error.details  # => structured detail hash (e.g. field-level validation errors)
+```
+
+This is the part of Railsmith that applies everywhere, even if you adopt nothing else.
+
+---
+
+## Is this for you?
+
+If your Rails app is small and moving fast, you probably don't need this. Reach for models first. Active Record callbacks, validations, and scopes handle a lot, and adding abstraction too early is a real cost.
+
+Railsmith is extracted from a production app that crossed the threshold where that stopped being enough. The inflection point looked like this:
+
+- Multi-step workflows — validate cart → reserve inventory → charge payment → create order — each step needing independent rollback on failure
+- `accepts_nested_attributes_for` silently skipping service-level validations on associated records
+- No consistent answer to "what does this action return when it fails?"
+- Cross-domain calls (billing code touching identity models) with no warning and no audit trail
+- Business logic scattered across callbacks, controllers, and models with no single place to look
+
+If several of those sound familiar, Railsmith gives you a single, consistent pattern for all of them. If they don't, you're probably not at the inflection point yet.
+
+---
+
+## The core idea
+
+Every model access goes through a service. The service is the only place domain logic lives.
+
+**Before** — logic split between controller and model, inconsistent error handling:
+
+```ruby
+# controller
+def create
+  @order = Order.new(order_params)
+  @order.line_items.build(line_item_params)  # bypasses LineItem validations you care about
+  if @order.save
+    PaymentGateway.charge(@order)            # exception if it fails — now what?
+    render json: @order, status: :created
+  else
+    render json: @order.errors, status: :unprocessable_entity
+  end
+end
+```
+
+**After** — one call, one result, everything in the right place:
+
+```ruby
+# controller
+def create
+  result = OrderService.call!(action: :create, params: order_params, context: ctx)
+  render json: result.value, status: :created
+end
+# OrderService handles nested line items through LineItemService (hooks, validations intact),
+# payment charging, rollback on failure, and returns a structured Result — no rescue needed.
+```
 
 ---
 
@@ -60,27 +138,6 @@ It includes smoke scripts for checkout pipelines and async nested writes against
 
 ---
 
-## Result Contract
-
-Every service call returns a `Railsmith::Result`. You never rescue exceptions from service calls.
-
-```ruby
-# Success
-result = Railsmith::Result.success(value: { id: 123 }, meta: { request_id: "abc" })
-result.success?  # => true
-result.value     # => { id: 123 }
-result.meta      # => { request_id: "abc" }
-result.to_h      # => { success: true, value: { id: 123 }, meta: { request_id: "abc" } }
-
-# Failure
-error  = Railsmith::Errors.not_found(message: "User not found", details: { model: "User", id: 1 })
-result = Railsmith::Result.failure(error:)
-result.failure?        # => true
-result.code            # => "not_found"
-result.error.to_h      # => { code: "not_found", message: "User not found", details: { ... } }
-```
-
----
 
 ## Declarative Inputs
 
@@ -486,10 +543,6 @@ BUNDLE_GEMFILE=gemfiles/rails_7_0.gemfile bundle exec rspec
 - `ruby benchmarks/pipeline_overhead.rb` — coarse timing of pipeline vs sequential calls (see script header).
 
 To install locally: `bundle exec rake install`.
-
-### Releasing
-
-With `lib/railsmith/version.rb` and `CHANGELOG.md` updated and committed, run `bundle exec rake release` to tag `v` + version, build the gem, and push to RubyGems (requires `gem push` credentials and a clean git state). To publish manually: `gem build railsmith.gemspec` then `gem push railsmith-X.Y.Z.gem`.
 
 ---
 
