@@ -110,6 +110,8 @@ See [docs/inputs.md](docs/inputs.md) for the full reference.
 
 ## Association Support
 
+This is not `accepts_nested_attributes_for`. AR's nested attributes write directly through the model — validations, callbacks, and business logic in associated services are bypassed. Railsmith's nested writes delegate to each associated service class, so every service's input validation, lifecycle hooks, domain checks, and custom logic run as if you had called that service directly. The difference matters when your `LineItemService` has logic AR doesn't know about.
+
 Declare associations at the service level for eager loading, nested CRUD, and cascading destroy.
 
 ```ruby
@@ -284,6 +286,8 @@ See [docs/call-bang.md](docs/call-bang.md) for the full reference.
 ---
 
 ## CRUD Actions
+
+CRUD defaults exist to make domain enforcement practical. If every model access must go through a service — so arch checks, cross-domain guards, and lifecycle hooks fire consistently — you'd otherwise hand-write boilerplate services for every model. The defaults give you a compliant service for free; override only what needs custom logic.
 
 Services that declare a `model` inherit `create`, `update`, `destroy`, `find`, and `list` with automatic exception mapping:
 
