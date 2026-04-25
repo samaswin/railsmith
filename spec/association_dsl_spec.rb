@@ -63,11 +63,11 @@ RSpec.describe "Railsmith::BaseService Association DSL" do
     it "stores dependent and validate options" do
       stub = stub_service
       svc = Class.new(Railsmith::BaseService) do
-        has_one :profile, service: stub, dependent: :nullify, validate: false
+        has_one :profile, service: stub, dependent: :destroy, validate: false
       end
 
       defn = svc.association_registry[:profile]
-      expect(defn.dependent).to eq(:nullify)
+      expect(defn.dependent).to eq(:destroy)
       expect(defn.validate).to be false
     end
   end
@@ -282,13 +282,6 @@ RSpec.describe "Railsmith::BaseService Association DSL" do
       stub = stub_service
       expect do
         Class.new(Railsmith::BaseService) { has_many :items, service: stub, async: true, dependent: :destroy }
-      end.to raise_error(ArgumentError, /async: true is not compatible with dependent/)
-    end
-
-    it "raises when combined with dependent: :nullify" do
-      stub = stub_service
-      expect do
-        Class.new(Railsmith::BaseService) { has_many :items, service: stub, async: true, dependent: :nullify }
       end.to raise_error(ArgumentError, /async: true is not compatible with dependent/)
     end
 

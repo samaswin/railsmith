@@ -22,7 +22,6 @@ module Railsmith
     #
     # Cascading destroy:
     #   dependent: :destroy  → calls associated service destroy for each child
-    #   dependent: :nullify  → calls associated service update with FK set to nil
     #   dependent: :restrict → returns failure if any children exist
     #   dependent: :ignore   → does nothing (rely on DB constraints)
     #

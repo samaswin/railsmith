@@ -27,12 +27,12 @@ module Railsmith
         # @param name        [Symbol]  association key (matches nested param key)
         # @param service     [Class]   service class for the associated records
         # @param foreign_key [Symbol]  explicit FK; inferred from parent model when omitted
-        # @param dependent   [Symbol]  :destroy, :nullify, :restrict, or :ignore (default)
+        # @param dependent   [Symbol]  :destroy, :restrict, or :ignore (default)
         # @param validate    [Boolean] validate nested records (default: true)
         # @param async       [Boolean] when true, nested writes are enqueued as
         #   background jobs instead of running inline inside the parent's
         #   transaction (default: false). Not compatible with
-        #   +dependent: :destroy/:nullify/:restrict+.
+        #   +dependent: :destroy/:restrict+.
         def has_many(name, service:, foreign_key: nil, dependent: :ignore, validate: true, async: false)
           association_registry.register(
             AssociationDefinition.new(
@@ -51,11 +51,11 @@ module Railsmith
         # @param name        [Symbol]  association key
         # @param service     [Class]   service class for the associated record
         # @param foreign_key [Symbol]  explicit FK; inferred from parent model when omitted
-        # @param dependent   [Symbol]  :destroy, :nullify, :restrict, or :ignore (default)
+        # @param dependent   [Symbol]  :destroy, :restrict, or :ignore (default)
         # @param validate    [Boolean] validate nested records (default: true)
         # @param async       [Boolean] when true, the nested write is enqueued as
         #   a background job instead of running inline. Not compatible with
-        #   +dependent: :destroy/:nullify/:restrict+.
+        #   +dependent: :destroy/:restrict+.
         def has_one(name, service:, foreign_key: nil, dependent: :ignore, validate: true, async: false)
           association_registry.register(
             AssociationDefinition.new(

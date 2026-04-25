@@ -14,7 +14,6 @@ RSpec.describe "Railsmith::BaseService cascading destroy" do
         t.timestamps null: false
       end
 
-      # cd_order_id is nullable to support :nullify cascade
       create_table :cd_items, force: true do |t|
         t.integer :cd_order_id
         t.string  :name
@@ -88,30 +87,7 @@ RSpec.describe "Railsmith::BaseService cascading destroy" do
   end
 
   # =========================================================================
-  # 2. dependent: :nullify
-  # =========================================================================
-
-  describe "dependent: :nullify" do
-    it "nullifies FK on child records and then destroys the parent" do
-      svc   = order_service_with(dependent: :nullify)
-      order = create_order_with_items(count: 2)
-      item_ids = CdItem.where(cd_order_id: order.id).pluck(:id)
-
-      result = svc.call(action: :destroy, params: { id: order.id }, context: {})
-
-      expect(result).to be_success
-      expect(CdOrder.find_by(id: order.id)).to be_nil
-
-      # Child records still exist, FK nullified
-      expect(CdItem.where(id: item_ids).count).to eq(2)
-      CdItem.where(id: item_ids).each do |item|
-        expect(item.cd_order_id).to be_nil
-      end
-    end
-  end
-
-  # =========================================================================
-  # 3. dependent: :restrict
+  # 2. dependent: :restrict
   # =========================================================================
 
   describe "dependent: :restrict" do

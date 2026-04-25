@@ -26,7 +26,6 @@ module Railsmith
 
           case definition.dependent
           when :destroy  then cascade_destroy(definition, parent_record, foreign_key)
-          when :nullify  then cascade_nullify(definition, parent_record, foreign_key)
           when :restrict then cascade_restrict(definition, parent_record, foreign_key)
           else                Result.success(value: nil)
           end
@@ -35,16 +34,6 @@ module Railsmith
         def cascade_destroy(definition, parent_record, foreign_key)
           each_associated_id(definition, parent_record, foreign_key) do |record_id|
             definition.service_class.call(action: :destroy, params: { id: record_id }, context: context)
-          end
-        end
-
-        def cascade_nullify(definition, parent_record, foreign_key)
-          each_associated_id(definition, parent_record, foreign_key) do |record_id|
-            definition.service_class.call(
-              action: :update,
-              params: { id: record_id, attributes: { foreign_key => nil } },
-              context: context
-            )
           end
         end
 

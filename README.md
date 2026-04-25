@@ -4,7 +4,7 @@ Railsmith helps you manage complex multi-step workflows in Rails apps — the ki
 
 It is not a replacement for Rails models or controllers. It's for the cases where those alone aren't enough.
 
-**Requirements**: Ruby >= 3.1.0, Rails 7.0–8.x
+**Requirements**: Ruby 3.1–3.3, Rails 7.0–8.x
 
 ---
 

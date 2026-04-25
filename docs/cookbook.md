@@ -769,11 +769,10 @@ class OrderService < Railsmith::BaseService
   model Order
   domain :commerce
 
-  has_many   :line_items,       service: LineItemService, dependent: :destroy
-  has_one    :shipping_address, service: AddressService,  dependent: :nullify
-  belongs_to :customer,         service: CustomerService, optional: true
+  has_many   :line_items, service: LineItemService, dependent: :destroy
+  belongs_to :customer,  service: CustomerService, optional: true
 
-  includes :line_items, :customer, :shipping_address
+  includes :line_items, :customer
 end
 ```
 
@@ -786,18 +785,14 @@ result = OrderService.call(
       { attributes: { product_id: 1, qty: 2, price: 29.99 } },
       { attributes: { product_id: 5, qty: 1, price: 39.99 } }
     ],
-    shipping_address: {
-      attributes: { street: "123 Main St", city: "Portland", zip: "97201" }
-    }
   },
   context: ctx
 )
 
 result.success?   # => true
-result.value      # => <Order> with line_items and shipping_address loaded
+result.value      # => <Order> with line_items loaded
 result.meta[:nested]
-# => { line_items: { total: 2, success_count: 2, failure_count: 0 },
-#       shipping_address: { success: true } }
+# => { line_items: { total: 2, success_count: 2, failure_count: 0 } }
 ```
 
 If any **synchronous** nested write fails, the entire transaction rolls back — the parent order is not saved. For associations declared with `async: true`, child writes run after commit in a background job; configure `Railsmith.configure { |c| c.async_job_class = ... }` and see [Associations — Async nested writes](associations.md#async-nested-writes).
@@ -847,12 +842,10 @@ result.value.line_items  # => already loaded, no extra query
 class OrderService < Railsmith::BaseService
   model Order
 
-  has_many :line_items,       service: LineItemService, dependent: :destroy
-  has_one  :shipping_address, service: AddressService,  dependent: :nullify
+  has_many :line_items, service: LineItemService, dependent: :destroy
 end
 
 # Destroys all line_items via LineItemService,
-# nullifies shipping_address.order_id via AddressService,
 # then destroys the order — all in one transaction.
 OrderService.call(action: :destroy, params: { id: 42 }, context: ctx)
 ```

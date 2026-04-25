@@ -11,7 +11,7 @@ module Railsmith
       # destruction. Async nested writes cannot honor these guarantees because
       # the job runs after the parent transaction has committed, so combining
       # them is rejected up-front.
-      ASYNC_INCOMPATIBLE_DEPENDENT = %i[destroy nullify restrict].freeze
+      ASYNC_INCOMPATIBLE_DEPENDENT = %i[destroy restrict].freeze
 
       attr_reader :name, :kind, :service_class, :foreign_key, :dependent, :optional, :validate, :async
 

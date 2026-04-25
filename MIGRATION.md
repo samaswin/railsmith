@@ -1,5 +1,26 @@
 # Migration Guide
 
+## Upgrading from 1.3.0 to 1.3.1
+
+### Removed — `dependent: :nullify`
+
+The `:nullify` cascade mode has been removed from `has_many` and `has_one`.
+
+**If you are not using `dependent: :nullify` anywhere, no action is required.**
+
+If you are, find usages with:
+
+```bash
+grep -r "dependent: :nullify" app/
+```
+
+Replace each with one of the following:
+
+- **Recommended:** add `ON DELETE SET NULL` to the foreign key constraint in a migration — the database handles nullification automatically on destroy.
+- **In-service:** switch to `dependent: :ignore` and handle the nullification explicitly in a custom `destroy` action on the parent service.
+
+---
+
 ## Upgrading from 1.2.0 to 1.3.0
 
 All changes in 1.3.0 are **additive and backward-compatible**. Every service and pipeline written for 1.2.0 continues to work without modification.
@@ -240,9 +261,8 @@ class OrderService < Railsmith::BaseService
   model Order
   domain :commerce
 
-  has_many   :line_items,       service: LineItemService, dependent: :destroy
-  has_one    :shipping_address, service: AddressService,  dependent: :nullify
-  belongs_to :customer,         service: CustomerService, optional: true
+  has_many   :line_items, service: LineItemService, dependent: :destroy
+  belongs_to :customer,  service: CustomerService, optional: true
 end
 ```
 
@@ -350,7 +370,6 @@ When `has_many` or `has_one` is declared with a `dependent:` option other than `
 | `dependent:` | Behaviour |
 |---|---|
 | `:destroy` | calls child service `destroy` for each associated record |
-| `:nullify` | calls child service `update` with FK set to `nil` |
 | `:restrict` | returns `validation_error` failure if any children exist (parent is not deleted) |
 | `:ignore` | does nothing — default, matches 1.1.0 behaviour |
 

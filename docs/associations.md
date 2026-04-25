@@ -13,10 +13,9 @@ class OrderService < Railsmith::BaseService
   model Order
   domain :commerce
 
-  has_many   :line_items,       service: LineItemService, dependent: :destroy
-  has_many   :audit_events,     service: AuditEventService, async: true
-  has_one    :shipping_address, service: AddressService,  dependent: :nullify
-  belongs_to :customer,         service: CustomerService, optional: true
+  has_many   :line_items,   service: LineItemService, dependent: :destroy
+  has_many   :audit_events, service: AuditEventService, async: true
+  belongs_to :customer,     service: CustomerService, optional: true
 end
 ```
 
@@ -53,11 +52,10 @@ Railsmith’s `dependent:` is service-layer compensation: child work runs **thro
 | `dependent:` | Behaviour |
 |----------------|-----------|
 | `:destroy` | child service `destroy` for each associated record |
-| `:nullify` | child service `update` with FK set to `nil` |
 | `:restrict` | `validation_error` if any children exist (parent is not deleted) |
 | `:ignore` | nothing — rely on DB constraints (default) |
 
-`async: true` is **not** compatible with `:destroy`, `:nullify`, or `:restrict`, because deferred jobs cannot safely participate in the same transaction as parent destroy or FK cleanup.
+`async: true` is **not** compatible with `:destroy` or `:restrict`, because deferred jobs cannot safely participate in the same transaction as parent destroy.
 
 ---
 
@@ -181,7 +179,7 @@ The gem ships with `Railsmith::AsyncNestedWriteJob`, which re-hydrates the paren
 ### When not to use `async: true`
 
 - Core data that must stay consistent with the parent (for example order line items).
-- Associations with `dependent: :destroy`, `:nullify`, or `:restrict` (disallowed at declaration time).
+- Associations with `dependent: :destroy` or `:restrict` (disallowed at declaration time).
 - Any case where you need the parent and children to succeed or fail together in one transaction.
 
 ### Instrumentation
@@ -204,7 +202,6 @@ When `has_many` or `has_one` is declared with a `dependent:` option, the `destro
 | `dependent:` | Behaviour |
 |--------------|-----------|
 | `:destroy` | calls child service `destroy` for each associated record |
-| `:nullify` | calls child service `update` with FK set to `nil` |
 | `:restrict` | returns `validation_error` failure if any children exist (parent is not deleted) |
 | `:ignore` | does nothing — default, relies on DB-level constraints |
 
@@ -212,13 +209,11 @@ When `has_many` or `has_one` is declared with a `dependent:` option, the `destro
 class OrderService < Railsmith::BaseService
   model Order
 
-  has_many :line_items,       service: LineItemService, dependent: :destroy
-  has_one  :shipping_address, service: AddressService,  dependent: :nullify
+  has_many :line_items, service: LineItemService, dependent: :destroy
 end
 
 # Destroy: runs LineItemService.call(action: :destroy) for each line item,
-# then nullifies shipping_address.order_id, then deletes the order.
-# All inside one transaction.
+# then deletes the order — all inside one transaction.
 OrderService.call(action: :destroy, params: { id: 42 }, context: ctx)
 ```
 

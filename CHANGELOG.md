@@ -7,6 +7,40 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [1.3.1] — 2026-04-25
+
+### Removed
+
+- **`dependent: :nullify`** cascade mode has been removed from `has_many` and `has_one`. The `:nullify` option set the child's foreign key to `nil` via the associated service's `update` action. This behaviour added implicit coupling between parent and child services and encouraged patterns that are better handled at the database level (`ON DELETE SET NULL`) or explicitly in a custom service action.
+
+  **Migration:** if you are using `dependent: :nullify`, replace it with one of the following:
+  - Set `ON DELETE SET NULL` on the foreign key constraint in your database migration (recommended).
+  - Use `dependent: :ignore` and handle nullification explicitly in a custom `destroy` action on the parent service.
+
+  The `:nullify` symbol is no longer a valid `dependent:` value. Passing it will fall through to the `:ignore` branch silently; a future release may raise `ArgumentError`.
+
+### Changed
+
+- `AssociationDefinition::ASYNC_INCOMPATIBLE_DEPENDENT` no longer includes `:nullify` (removed alongside the feature).
+- `async: true` compatibility note updated: `:destroy` and `:restrict` remain incompatible with async associations; `:nullify` is no longer listed.
+
+### Security
+
+- Tightened the nokogiri lower-bound pin for Ruby < 3.2 to `>= 1.18.9` (CVE patched in 1.18.9).
+
+### Changed
+
+- Added `ruby "~> 3.3"` to the root `Gemfile` so Bundler writes a `RUBY VERSION` section into `Gemfile.lock`; Dependabot reads that section to pick Ruby 3.3 for resolution instead of falling back to the gemspec minimum (3.1), which is incompatible with bundler 4.x.
+- CI lint job now uses `ruby-version: .ruby-version` instead of the loose `"3.3"`, pinning it to the exact version declared in `.ruby-version`.
+- Added `.github/dependabot.yml` to enable weekly automated updates for Bundler and GitHub Actions.
+- README requirements updated from `>= 3.1.0` to `3.1–3.3` to match the tested CI matrix.
+
+### Documentation
+
+- README, `docs/associations.md`, and `docs/cookbook.md` updated to remove all `:nullify` references and examples.
+
+---
+
 ## [1.3.0] — 2026-07-14
 
 ### Added — Service Pipelines
@@ -510,6 +544,7 @@ First stable release. Public DSL and result contract are now frozen.
 
 Internal bootstrap release. Gem skeleton, CI baseline, and initial service scaffolding. Not intended for production use.
 
+[1.3.1]: https://github.com/samaswin/railsmith/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/samaswin/railsmith/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/samaswin/railsmith/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/samaswin/railsmith/compare/v1.0.0...v1.1.0

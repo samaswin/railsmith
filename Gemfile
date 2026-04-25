@@ -2,6 +2,10 @@
 
 source "https://rubygems.org"
 
+# Declare the development Ruby version so Dependabot resolves against 3.3
+# instead of the gemspec's minimum (3.1), which is incompatible with bundler 4.x.
+ruby "~> 3.3"
+
 # Specify your gem's dependencies in railsmith.gemspec
 gemspec
 
@@ -31,6 +35,6 @@ gem "sqlite3", ">= 2.1", "< 2.9"
 if RUBY_VERSION < "3.2"
   gem "connection_pool", "< 3"
   gem "erb", "< 5"
-  gem "nokogiri", "< 1.19"
+  gem "nokogiri", ">= 1.18.9", "< 1.19"
   gem "zeitwerk", "< 2.7"
 end
