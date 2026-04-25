@@ -167,19 +167,16 @@ See [docs/inputs.md](docs/inputs.md) for the full reference.
 
 ## Association Support
 
-This is not `accepts_nested_attributes_for`. AR's nested attributes write directly through the model — validations, callbacks, and business logic in associated services are bypassed. Railsmith's nested writes delegate to each associated service class, so every service's input validation, lifecycle hooks, domain checks, and custom logic run as if you had called that service directly. The difference matters when your `LineItemService` has logic AR doesn't know about.
-
-Declare associations at the service level for eager loading, nested CRUD, and cascading destroy.
+Declare associations at the service level for eager loading, nested CRUD, and cascading destroy. Nested writes delegate to each associated service class — so every service's input validation, lifecycle hooks, and custom logic run as if you had called that service directly.
 
 ```ruby
 class OrderService < Railsmith::BaseService
   model Order
   domain :commerce
 
-  has_many   :line_items,       service: LineItemService, dependent: :destroy
-  has_many   :audit_events,     service: AuditEventService, async: true
-  has_one    :shipping_address, service: AddressService,  dependent: :nullify
-  belongs_to :customer,         service: CustomerService, optional: true
+  has_many   :line_items,   service: LineItemService, dependent: :destroy
+  has_many   :audit_events, service: AuditEventService, async: true
+  belongs_to :customer,     service: CustomerService, optional: true
 
   includes :line_items, :customer
 end
