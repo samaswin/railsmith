@@ -11,6 +11,10 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+## [1.3.2] — 2026-04-26
+
+### Changed
+
 - **Action-scoped eager loading** (`Railsmith::BaseService::EagerLoading`) — `includes` now accepts `only:` / `except:` to apply eager loads per action (e.g. `includes :readers, only: %i[find list]`).
 - **Relationship DSL naming** — service relationship macros are now `link_many`, `link_one`, and `link_ref` (the old Rails-style macro names are not supported in the service DSL).
 - **`--associations` generator output** — `railsmith:model_service --associations` now emits `link_many`, `link_one`, and `link_ref` declarations.
@@ -554,6 +558,7 @@ First stable release. Public DSL and result contract are now frozen.
 
 Internal bootstrap release. Gem skeleton, CI baseline, and initial service scaffolding. Not intended for production use.
 
+[1.3.2]: https://github.com/samaswin/railsmith/compare/v1.3.1...v1.3.2
 [1.3.1]: https://github.com/samaswin/railsmith/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/samaswin/railsmith/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/samaswin/railsmith/compare/v1.1.0...v1.2.0
