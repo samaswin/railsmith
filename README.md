@@ -143,6 +143,18 @@ It includes smoke scripts for checkout pipelines and async nested writes against
 
 Declare expected parameters with types, defaults, and constraints using the `input` DSL. Railsmith coerces, validates, and filters params automatically before the action runs.
 
+### Railsmith validation vs Active Record validation
+
+Railsmith **does not replace Active Record validations** (e.g. `validates :email, ...`) and it does not define model validations for you.
+
+- **Railsmith validations** apply to **service inputs and workflows**:
+  - The `input` DSL validates and coerces incoming params (required keys, allowed values, type coercion).
+  - `validate(contract:)` runs a custom contract for cross-field or business-rule checks.
+- **Active Record validations** still run when Railsmith persists a record (e.g. `create`/`update` calling `save`).
+  - If `save` fails, Railsmith returns a structured `validation_error` and (by default) **surfaces** `record.errors` in `error.details`.
+
+If you want a single mental model: **Railsmith validates the request to the service; Active Record validates the record.**
+
 ```ruby
 class UserService < Railsmith::BaseService
   model User
@@ -362,6 +374,10 @@ UserService.call(action: :destroy, params: { id: 1 })
 ```
 
 Common ActiveRecord exceptions (`RecordNotFound`, `RecordInvalid`, `RecordNotUnique`) are caught and converted to structured failure results automatically.
+
+> Note: Railsmith may return `validation_error` for two different reasons:
+> - **Service input / contract validation** failed (no persistence attempted).
+> - **Active Record persistence** failed due to model validations (Railsmith surfaces `record.errors`).
 
 ---
 

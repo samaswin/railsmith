@@ -4,6 +4,17 @@ The `input` DSL declares the parameters a service expects — their types, defau
 
 ---
 
+## What “validation” means in Railsmith
+
+Railsmith uses the word **validation** in a service-layer sense:
+
+- **Input validation**: checking that the caller provided the required keys, that values can be coerced to the declared types, and that `in:` constraints are satisfied.
+- **Contract validation**: optional custom checks via `validate(contract:)` for cross-field and business rules.
+
+Railsmith **does not define Active Record model validations** (it does not generate or run `validates ...` declarations for your models). Active Record validations still run when a service persists a record, and Railsmith may surface those errors when `save` fails.
+
+---
+
 ## Basic declaration
 
 ```ruby

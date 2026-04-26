@@ -586,6 +586,10 @@ end
 
 `validate` returns `Result.failure` with a `validation_error` if any key is missing, or `Result.success` otherwise.
 
+> Important: `validation_error` in Railsmith is a **generic failure code** used for:
+> - service input validation (`input` DSL, `validate(...)`, `validate(contract:)`)
+> - Active Record persistence failures when a model `save` fails (Railsmith may surface `record.errors`)
+
 ### Validation with a `dry-validation`-style contract
 
 Pass a `contract:` object that responds to `call(input)` and returns a result with `success?` and `errors` (for example a `Dry::Validation::Contract` instance). On failure, the service gets `Result.failure` with `validation_error` and `details[:errors]` populated from the contract.
