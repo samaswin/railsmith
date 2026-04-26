@@ -92,7 +92,7 @@ Every service call returns a `Railsmith::Result`. You never rescue exceptions fr
 UserService.call(
   action: :create,
   params: { attributes: { name: "Alice", email: "alice@example.com" } },
-  context: Railsmith::Context.new(domain: :identity, actor_id: current_user.id)
+  context: Railsmith::Context.new(domain: :identity, actor_id: current_user.id, actor: current_user)
 )
 ```
 

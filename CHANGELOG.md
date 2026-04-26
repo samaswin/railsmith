@@ -11,6 +11,9 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- **Controller context seeding** — `Railsmith::ControllerHelpers#railsmith_context` now automatically seeds `actor_id` (from `current_user.id`) and `actor` (the `current_user` object) when `current_user` is available; explicit `actor_id:` / `actor:` still win.
+- **Context actor object** — `Railsmith::Context` now supports `actor:` / `context[:actor]` / `context.actor` for in-process access. `actor` is intentionally not included in `Context#to_h` to avoid serializing model objects into hashes.
+
 ## [1.3.2] — 2026-04-26
 
 ### Changed

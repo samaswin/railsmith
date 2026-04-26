@@ -63,14 +63,45 @@ module Railsmith
     # @param extras [Hash] arbitrary extra keys (actor_id, tenant_id, etc.)
     # @return [Railsmith::Context]
     def railsmith_context(domain: nil, **extras)
-      request_id = extras.delete(:request_id)
-      request_id ||= request.request_id if respond_to?(:request) && request.respond_to?(:request_id)
+      request_id = railsmith_request_id(extras)
+      extras = railsmith_seed_actor_id(extras)
+      extras = railsmith_seed_actor(extras)
 
       Railsmith::Context.new(
         domain: domain,
         request_id: request_id,
         **extras
       )
+    end
+
+    private
+
+    def railsmith_request_id(extras)
+      explicit_request_id = extras.delete(:request_id)
+      return explicit_request_id unless explicit_request_id.nil?
+      return nil unless respond_to?(:request) && request.respond_to?(:request_id)
+
+      request.request_id
+    end
+
+    def railsmith_seed_actor_id(extras)
+      return extras if extras.key?(:actor_id)
+      return extras unless respond_to?(:current_user)
+
+      actor_id = current_user&.id
+      return extras if actor_id.nil?
+
+      extras.merge(actor_id: actor_id)
+    end
+
+    def railsmith_seed_actor(extras)
+      return extras if extras.key?(:actor)
+      return extras unless respond_to?(:current_user)
+
+      actor = current_user
+      return extras if actor.nil?
+
+      extras.merge(actor: actor)
     end
   end
 end

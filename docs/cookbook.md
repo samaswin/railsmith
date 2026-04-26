@@ -328,7 +328,8 @@ Use `Railsmith::Context` to attach domain and tracing data. Extra keys (`actor_i
 ```ruby
 ctx = Railsmith::Context.new(
   domain: :billing,
-  actor_id: current_user.id
+  actor_id: current_user.id,
+  actor: current_user
   # request_id is auto-generated as a UUID when omitted
 )
 
@@ -345,7 +346,8 @@ To forward an existing request ID (e.g. from an HTTP header):
 ctx = Railsmith::Context.new(
   domain: :billing,
   request_id: request.headers["X-Request-Id"],
-  actor_id: current_user.id
+  actor_id: current_user.id,
+  actor: current_user
 )
 ```
 
@@ -361,7 +363,8 @@ around_action do |_, block|
   Railsmith::Context.with(
     domain:     :web,
     request_id: request.request_id,
-    actor_id:   current_user&.id
+    actor_id:   current_user&.id,
+    actor:      current_user
   ) { block.call }
 end
 ```

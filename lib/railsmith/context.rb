@@ -91,20 +91,22 @@ module Railsmith
 
     # @param domain [Symbol, String, nil] bounded-context key (preferred kwarg)
     # @param current_domain [Symbol, String, nil] deprecated alias for +domain:+
+    # @param actor [Object, nil] in-process actor object (not serialized in {#to_h})
     # @param extras [Hash] arbitrary extra keys stored at the top level
-    def initialize(domain: nil, current_domain: nil, **extras)
+    def initialize(domain: nil, current_domain: nil, actor: nil, **extras)
       if !current_domain.nil? && domain.nil?
         warn "[DEPRECATION] Railsmith::Context: `current_domain:` is deprecated; use `domain:` instead."
         domain = current_domain
       end
 
       @domain = self.class.normalize_current_domain(domain)
+      @actor = actor
       extras[:request_id] ||= SecureRandom.uuid
       @extras = extras.freeze
       freeze
     end
 
-    attr_reader :domain
+    attr_reader :domain, :actor
 
     # Returns the request ID (auto-generated UUID if not supplied at construction).
     def request_id
@@ -120,6 +122,7 @@ module Railsmith
     def [](key)
       sym = key.to_sym
       return @domain if %i[current_domain domain].include?(sym)
+      return @actor if sym == :actor
 
       @extras[sym]
     end

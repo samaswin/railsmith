@@ -454,7 +454,10 @@ class OrdersController < ApplicationController
     result = OrderService.call!(
       action: :create,
       params: { attributes: order_params },
-      context: railsmith_context(domain: :commerce, actor_id: current_user.id)
+      # When `current_user` is available, railsmith_context automatically seeds:
+      # - actor_id: current_user.id
+      # - actor:    current_user (not serialized in Context#to_h)
+      context: railsmith_context(domain: :commerce)
     )
     render json: result.value, status: :created
   end

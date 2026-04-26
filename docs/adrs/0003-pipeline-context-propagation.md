@@ -8,7 +8,7 @@
 
 ## Context
 
-`Railsmith::Context` is an immutable value object (frozen after construction) that carries cross-cutting state: `request_id`, `current_domain`, `actor_id`, and arbitrary extras. In v1.2, context is thread-local (`Context.current`) and is set by `ContextPropagation#call` before dispatching to a service action.
+`Railsmith::Context` is an immutable value object (frozen after construction) that carries cross-cutting state: `request_id`, `current_domain`, `actor_id`, `actor` (in-process only; not serialized by `to_h`), and arbitrary extras. In v1.2, context is thread-local (`Context.current`) and is set by `ContextPropagation#call` before dispatching to a service action.
 
 A pipeline calls multiple services in sequence. The pipeline runner must decide:
 
@@ -32,7 +32,7 @@ The `Railsmith::Context` object that was active when `Pipeline.call` was invoked
 result = CheckoutPipeline.call(
   action:  :run,
   params:  { cart_id: 42 },
-  context: { actor_id: current_user.id, current_domain: :commerce }
+  context: { actor_id: current_user.id, actor: current_user, current_domain: :commerce }
 )
 # Every step (CartService, InventoryService, PaymentService) receives
 # the same Context object with actor_id and current_domain set.

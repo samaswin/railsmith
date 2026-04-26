@@ -84,6 +84,15 @@ RSpec.describe Railsmith::Context do
       expect(ctx[:trace_id]).to eq("abc")
     end
 
+    it "stores an actor object without serializing it to to_h" do
+      actor = Struct.new(:id).new(7)
+      ctx = described_class.new(domain: :billing, actor: actor, actor_id: 7, request_id: "r1")
+      expect(ctx.actor).to be(actor)
+      expect(ctx[:actor]).to be(actor)
+      expect(ctx.to_h).to include(current_domain: :billing, actor_id: 7, request_id: "r1")
+      expect(ctx.to_h).not_to have_key(:actor)
+    end
+
     it "accepts current_domain: as a deprecated alias for domain:" do
       expect { described_class.new(current_domain: :billing) }.to output(/deprecated/).to_stderr
     end

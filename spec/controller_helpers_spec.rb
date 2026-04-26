@@ -157,6 +157,10 @@ RSpec.describe Railsmith::ControllerHelpers do
         include Railsmith::ControllerHelpers
 
         attr_accessor :request
+
+        def current_user
+          Struct.new(:id).new(123)
+        end
       end
       klass
     end
@@ -186,6 +190,38 @@ RSpec.describe Railsmith::ControllerHelpers do
       expect(ctx[:actor_id]).to eq(42)
       expect(ctx[:tenant_id]).to eq(7)
       expect(ctx.request_id).to eq("inbound-abc-123")
+    end
+
+    it "seeds actor_id from current_user when available" do
+      ctrl = controller_class.new
+      ctrl.request = fake_request
+      ctx = ctrl.railsmith_context(domain: :commerce)
+      expect(ctx[:actor_id]).to eq(123)
+    end
+
+    it "seeds actor from current_user when available" do
+      ctrl = controller_class.new
+      ctrl.request = fake_request
+      ctx = ctrl.railsmith_context(domain: :commerce)
+      expect(ctx[:actor]).to be_a(Struct)
+      expect(ctx[:actor].id).to eq(123)
+      expect(ctx.to_h).not_to have_key(:actor)
+    end
+
+    it "does not override an explicit actor_id:" do
+      ctrl = controller_class.new
+      ctrl.request = fake_request
+      ctx = ctrl.railsmith_context(domain: :commerce, actor_id: 999)
+      expect(ctx[:actor_id]).to eq(999)
+    end
+
+    it "does not override an explicit actor:" do
+      ctrl = controller_class.new
+      ctrl.request = fake_request
+      custom_actor = Struct.new(:id).new(555)
+      ctx = ctrl.railsmith_context(domain: :commerce, actor: custom_actor)
+      expect(ctx[:actor].id).to eq(555)
+      expect(ctx.to_h).not_to have_key(:actor)
     end
 
     it "honors an explicit request_id passed in extras" do

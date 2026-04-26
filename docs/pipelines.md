@@ -158,7 +158,7 @@ end
 ### 3. Call it
 
 ```ruby
-ctx    = Railsmith::Context.new(domain: :commerce, actor_id: current_user.id)
+ctx    = Railsmith::Context.new(domain: :commerce, actor_id: current_user.id, actor: current_user)
 result = CheckoutPipeline.call(params: { cart_id: 42, user_id: current_user.id }, context: ctx)
 
 if result.success?
