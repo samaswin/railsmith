@@ -91,6 +91,35 @@ RSpec.describe "Railsmith::BaseService Eager Loading" do
       svc = Class.new(Railsmith::BaseService) { model ElProduct }
       expect(svc.eager_loads).to eq([])
     end
+
+    it "accepts only: to scope eager loads to actions" do
+      svc = Class.new(Railsmith::BaseService) do
+        model ElProduct
+        includes :el_tags, only: %i[list]
+      end
+
+      expect(svc.eager_loads_for(:list)).to eq([:el_tags])
+      expect(svc.eager_loads_for(:find)).to eq([])
+    end
+
+    it "accepts except: to exclude eager loads from actions" do
+      svc = Class.new(Railsmith::BaseService) do
+        model ElProduct
+        includes :el_tags, except: %i[list]
+      end
+
+      expect(svc.eager_loads_for(:find)).to eq([:el_tags])
+      expect(svc.eager_loads_for(:list)).to eq([])
+    end
+
+    it "raises when both only: and except: are provided" do
+      expect do
+        Class.new(Railsmith::BaseService) do
+          model ElProduct
+          includes :el_tags, only: %i[list], except: %i[find]
+        end
+      end.to raise_error(ArgumentError, /either `only:` or `except:`/)
+    end
   end
 
   # =========================================================================
@@ -155,6 +184,33 @@ RSpec.describe "Railsmith::BaseService Eager Loading" do
       result = service_without_includes.call(action: :list, params: {}, context: {})
       records = result.value.to_a
       expect(records.first.association(:el_tags).loaded?).to be false
+    end
+  end
+
+  describe "action-scoped eager loading" do
+    let(:service_only_list) do
+      Class.new(Railsmith::BaseService) do
+        model ElProduct
+        includes :el_tags, only: %i[list]
+      end
+    end
+
+    before do
+      product = ElProduct.create!(name: "Scoped")
+      ElTag.create!(el_product_id: product.id, label: "scoped")
+    end
+
+    it "preloads for list when scoped with only:" do
+      result = service_only_list.call(action: :list, params: {}, context: {})
+      records = result.value.to_a
+      expect(records.first.association(:el_tags).loaded?).to be true
+    end
+
+    it "does not preload for find when scoped with only:" do
+      product = ElProduct.first
+      result = service_only_list.call(action: :find, params: { id: product.id }, context: {})
+      expect(result).to be_success
+      expect(result.value.association(:el_tags).loaded?).to be false
     end
   end
 

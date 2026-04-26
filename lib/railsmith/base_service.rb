@@ -102,6 +102,8 @@ module Railsmith
       normalized_action = normalize_action(action)
       return invalid_action_result(action: normalized_action) unless valid_action?(normalized_action)
 
+      @current_action = normalized_action
+
       if self.class.input_registry.any?
         input_result = resolve_inputs
         return input_result if input_result.failure?

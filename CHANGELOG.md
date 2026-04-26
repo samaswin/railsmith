@@ -7,6 +7,12 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [Unreleased]
+
+### Changed
+
+- **Action-scoped eager loading** (`Railsmith::BaseService::EagerLoading`) — `includes` now accepts `only:` / `except:` to apply eager loads per action (e.g. `includes :readers, only: %i[find list]`).
+
 ## [1.3.1] — 2026-04-25
 
 ### Removed

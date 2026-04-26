@@ -289,7 +289,7 @@ end
 
 ### Eager Loading DSL (additive)
 
-The `includes` class macro declares eager loads applied automatically to `find` and `list`. Multiple calls are additive.
+The `includes` class macro declares eager loads applied automatically via `base_scope` (used by the built-in `find_record` helper and the default `list` action). Multiple calls are additive.
 
 ```ruby
 class OrderService < Railsmith::BaseService
@@ -300,9 +300,21 @@ class OrderService < Railsmith::BaseService
 end
 ```
 
+You can scope eager loads to specific actions:
+
+```ruby
+class OrderService < Railsmith::BaseService
+  model Order
+
+  includes :customer
+  includes :line_items, only: %i[find list]
+  includes :audit_events, except: %i[list]
+end
+```
+
 Before adding `includes`, if you had a custom `find_record` override or a `list` override that applied its own `model_class.includes(...)`, those overrides are **unaffected** — the default `base_scope` applies only to the built-in `find` and `list` actions.
 
-If your custom action already calls `find_record(model_klass, id)` it will now benefit from declared eager loads automatically. If this is unwanted, keep calling `model_klass.find_by(id:)` directly.
+If your custom action already calls `find_record(model_klass, id)` it will now benefit from declared eager loads automatically **for that action** (subject to any `only:` / `except:` scoping). If this is unwanted, keep calling `model_klass.find_by(id:)` directly.
 
 **No migration required.** Opt-in at your own pace.
 

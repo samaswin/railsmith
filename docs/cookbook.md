@@ -829,9 +829,21 @@ class OrderService < Railsmith::BaseService
   includes line_items: [:product, :variant]   # nested includes; additive
 end
 
-# find and list both apply the declared includes automatically
+# find and list both apply the declared includes automatically (via base_scope)
 result = OrderService.call(action: :find, params: { id: 1 })
 result.value.line_items  # => already loaded, no extra query
+```
+
+You can also scope eager loads to specific actions:
+
+```ruby
+class OrderService < Railsmith::BaseService
+  model Order
+
+  includes :customer
+  includes :line_items, only: %i[find list]
+  includes :audit_events, except: %i[list]
+end
 ```
 
 ---

@@ -61,7 +61,7 @@ Railsmith’s `dependent:` is service-layer compensation: child work runs **thro
 
 ## Eager loading
 
-The `includes` class macro declares eager loads applied automatically to `find` and `list`. Multiple calls are additive:
+The `includes` class macro declares eager loads applied automatically via `base_scope` (used by the built-in `find_record` helper and the default `list` action). Multiple calls are additive:
 
 ```ruby
 class OrderService < Railsmith::BaseService
@@ -69,6 +69,18 @@ class OrderService < Railsmith::BaseService
 
   includes :line_items, :customer
   includes line_items: [:product, :variant]   # merged with the call above
+end
+```
+
+You can scope eager loads to specific actions:
+
+```ruby
+class OrderService < Railsmith::BaseService
+  model Order
+
+  includes :customer
+  includes :line_items, only: %i[find list]
+  includes :audit_events, except: %i[list]
 end
 ```
 

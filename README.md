@@ -179,6 +179,7 @@ class OrderService < Railsmith::BaseService
   belongs_to :customer,     service: CustomerService, optional: true
 
   includes :line_items, :customer
+  includes :audit_events, only: %i[find list]
 end
 ```
 
