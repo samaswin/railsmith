@@ -37,7 +37,10 @@ module Railsmith
       end
 
       def blank?(value)
-        value.nil? || (value.respond_to?(:empty?) && value.empty?)
+        return true if value.nil?
+        return true if value.is_a?(String) && value.strip.empty?
+
+        value.respond_to?(:empty?) && value.empty?
       end
     end
 

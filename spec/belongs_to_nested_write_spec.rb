@@ -2,7 +2,7 @@
 
 require "spec_helper"
 
-RSpec.describe "Railsmith::BaseService link_parent nested write" do
+RSpec.describe "Railsmith::BaseService link_ref nested write" do
   before(:all) do
     require "active_record"
 
@@ -42,12 +42,12 @@ RSpec.describe "Railsmith::BaseService link_parent nested write" do
   def build_order_service(customer_svc)
     Class.new(Railsmith::BaseService) do
       model BtwOrder
-      link_parent :btw_customer, service: customer_svc, optional: true
+      link_ref :btw_customer, service: customer_svc, optional: true
     end
   end
 
   describe "nested create on parent create" do
-    it "creates the link_parent record and assigns the FK on the parent" do
+    it "creates the link_ref record and assigns the FK on the parent" do
       svc = build_order_service(customer_service)
 
       result = svc.call(
@@ -68,7 +68,7 @@ RSpec.describe "Railsmith::BaseService link_parent nested write" do
   end
 
   describe "nested update on parent update" do
-    it "updates the link_parent record when id is provided" do
+    it "updates the link_ref record when id is provided" do
       svc = build_order_service(customer_service)
       customer = BtwCustomer.create!(name: "Old")
       order = BtwOrder.create!(number: "A-2", btw_customer_id: customer.id)
@@ -90,7 +90,7 @@ RSpec.describe "Railsmith::BaseService link_parent nested write" do
   end
 
   describe "nested destroy on parent update" do
-    it "destroys the link_parent record and nullifies the FK on the parent when _destroy is true" do
+    it "destroys the link_ref record and nullifies the FK on the parent when _destroy is true" do
       svc = build_order_service(customer_service)
       customer = BtwCustomer.create!(name: "To Delete")
       order = BtwOrder.create!(number: "A-3", btw_customer_id: customer.id)

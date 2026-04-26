@@ -118,6 +118,18 @@ RSpec.describe Railsmith::BaseService::InputResolver do
       expect(result).to be_failure
     end
 
+    it "fails when required input is whitespace-only string" do
+      reg = registry_for(defn(:email, String, required: true))
+      result = resolve(reg, { email: "   \n\t" })
+      expect(result).to be_failure
+    end
+
+    it "succeeds when required input is a non-blank string" do
+      reg = registry_for(defn(:email, String, required: true))
+      result = resolve(reg, { email: "  a@b.com  " })
+      expect(result).to be_success
+    end
+
     it "succeeds when required input is provided" do
       reg = registry_for(defn(:email, String, required: true))
       result = resolve(reg, { email: "a@b.com" })

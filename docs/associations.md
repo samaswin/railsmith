@@ -6,7 +6,7 @@ Railsmith provides first-class association handling on services: eager loading, 
 
 ## Association DSL
 
-Declare service relationships at the class level using `link_many`, `link_one`, and `link_parent`:
+Declare service relationships at the class level using `link_many`, `link_one`, and `link_ref`:
 
 ```ruby
 class OrderService < Railsmith::BaseService
@@ -15,7 +15,7 @@ class OrderService < Railsmith::BaseService
 
   link_many   :line_items,   service: LineItemService, dependent: :destroy
   link_many   :audit_events, service: AuditEventService, async: true
-  link_parent :customer,     service: CustomerService, optional: true
+  link_ref :customer,     service: CustomerService, optional: true
 end
 ```
 
@@ -31,7 +31,7 @@ All three macros accept a `service:` option (required) pointing to the associate
 | `validate:` | Boolean | `true` | validate nested records before writing |
 | `async:` | Boolean | `false` | when `true`, nested writes for this association run in a background job after the parent commits ([details](#async-nested-writes)) |
 
-### `link_parent` options
+### `link_ref` options
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -39,7 +39,7 @@ All three macros accept a `service:` option (required) pointing to the associate
 | `foreign_key:` | Symbol | inferred | FK on this record; defaults to `#{association_name}_id` (e.g. `customer_id`) |
 | `optional:` | Boolean | `false` | skip presence validation for the FK |
 
-`link_parent` does not support `async:` (the parent row must exist before the FK is written).
+`link_ref` does not support `async:` (the referenced row must exist before the FK is written).
 
 ---
 
@@ -283,4 +283,4 @@ rails g railsmith:model_service Order --associations
 rails g railsmith:model_service Order --inputs --associations
 ```
 
-The generator reads `Model.reflect_on_all_associations` and emits `link_many`, `link_one`, and `link_parent` declarations plus an `includes` line. It adds `# TODO: Define XxxService` comments for associated service classes that don't exist yet.
+The generator reads `Model.reflect_on_all_associations` and emits `link_many`, `link_one`, and `link_ref` declarations plus an `includes` line. It adds `# TODO: Define XxxService` comments for associated service classes that don't exist yet.

@@ -278,7 +278,7 @@ RSpec.describe Railsmith::Generators::ModelServiceGenerator do
       expect(content).to include("# -- Associations --")
       expect(content).to include("link_many :line_items, service: LineItemService")
       expect(content).to include("link_one :shipping_address, service: ShippingAddressService")
-      expect(content).to include("link_parent :customer, service: CustomerService")
+      expect(content).to include("link_ref :customer, service: CustomerService")
       expect(content).to include("includes :line_items, :shipping_address, :customer")
     end
   end

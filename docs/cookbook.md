@@ -774,7 +774,7 @@ class OrderService < Railsmith::BaseService
   domain :commerce
 
   link_many   :line_items, service: LineItemService, dependent: :destroy
-  link_parent :customer,  service: CustomerService, optional: true
+  link_ref :customer,  service: CustomerService, optional: true
 
   includes :line_items, :customer
 end

@@ -12,7 +12,7 @@ module Railsmith
     #
     #     link_many   :line_items,       service: LineItemService, dependent: :destroy
     #     link_one    :shipping_address, service: AddressService
-    #     link_parent :customer,         service: CustomerService, optional: true
+    #     link_ref :customer,         service: CustomerService, optional: true
     #   end
     #
     module AssociationDsl
@@ -69,13 +69,13 @@ module Railsmith
           )
         end
 
-        # Declare a parent relationship (FK on this record).
+        # Declare a reference relationship (FK on this record).
         #
         # @param name        [Symbol]  association key
         # @param service     [Class]   service class for the parent record
         # @param foreign_key [Symbol]  explicit FK; inferred as "#{name}_id" when omitted
         # @param optional    [Boolean] skip presence validation (default: false)
-        def link_parent(name, service:, foreign_key: nil, optional: false)
+        def link_ref(name, service:, foreign_key: nil, optional: false)
           association_registry.register(
             AssociationDefinition.new(
               name, :belongs_to,

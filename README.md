@@ -188,7 +188,7 @@ class OrderService < Railsmith::BaseService
 
   link_many   :line_items,   service: LineItemService, dependent: :destroy
   link_many   :audit_events, service: AuditEventService, async: true
-  link_parent :customer,     service: CustomerService, optional: true
+  link_ref :customer,     service: CustomerService, optional: true
 
   includes :line_items, :customer
   includes :audit_events, only: %i[find list]

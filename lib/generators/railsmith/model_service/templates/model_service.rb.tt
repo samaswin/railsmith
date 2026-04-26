@@ -28,7 +28,7 @@ module <%= mod %>
    macro = case assoc.macro.to_s
            when legacy_many then "link_many"
            when legacy_one then "link_one"
-           when legacy_bt then "link_parent"
+           when legacy_bt then "link_ref"
            else assoc.macro.to_s
            end -%>
 <%= member_indent %><%= macro %> :<%= assoc.name %>, service: <%= assoc.service_class_name %>

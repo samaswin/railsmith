@@ -254,7 +254,7 @@ See [docs/call-bang.md](docs/call-bang.md) for detailed usage.
 
 ### Association DSL (additive)
 
-`link_many`, `link_one`, and `link_parent` are class-level macros for declaring relationships on a service. They are entirely opt-in — services without relationship declarations behave identically to 1.1.0.
+`link_many`, `link_one`, and `link_ref` are class-level macros for declaring relationships on a service. They are entirely opt-in — services without relationship declarations behave identically to 1.1.0.
 
 > Note: Railsmith previously used Rails-style macro names. Those names are no longer supported in the service DSL; migrate to `link_*`.
 
@@ -264,7 +264,7 @@ class OrderService < Railsmith::BaseService
   domain :commerce
 
   link_many   :line_items, service: LineItemService, dependent: :destroy
-  link_parent :customer,  service: CustomerService, optional: true
+  link_ref :customer,  service: CustomerService, optional: true
 end
 ```
 
@@ -277,7 +277,7 @@ end
 | `dependent:` | Symbol | `:ignore` | cascade behaviour on parent destroy (see Cascading Destroy below) |
 | `validate:` | Boolean | `true` | validate nested records |
 
-**Options for `link_parent`:**
+**Options for `link_ref`:**
 
 | Option | Type | Default | Description |
 |---|---|---|---|
@@ -418,7 +418,7 @@ The two formats are detected automatically by the presence of an `attributes:` k
 2. Run `bundle install`.
 3. Run `bundle exec rspec` — all existing specs should pass with zero changes.
 4. Opt-in to the `input` DSL on services where you want type coercion and validation (Phase 1, already available since the unreleased branch).
-5. Opt-in to `link_many` / `link_one` / `link_parent` on services that need nested writes or cascading destroy.
+5. Opt-in to `link_many` / `link_one` / `link_ref` on services that need nested writes or cascading destroy.
 6. Opt-in to `includes` on services that need eager loading on `find` and `list`.
 7. Deploy.
 

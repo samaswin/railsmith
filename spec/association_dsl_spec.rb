@@ -73,13 +73,13 @@ RSpec.describe "Railsmith::BaseService Association DSL" do
   end
 
   # =========================================================================
-  # 3. link_parent registration
+  # 3. link_ref registration
   # =========================================================================
 
-  describe "link_parent" do
+  describe "link_ref" do
     it "registers a belongs_to-kind association" do
       stub = stub_service
-      svc = Class.new(Railsmith::BaseService) { link_parent :customer, service: stub }
+      svc = Class.new(Railsmith::BaseService) { link_ref :customer, service: stub }
 
       defn = svc.association_registry[:customer]
       expect(defn).not_to be_nil
@@ -88,13 +88,13 @@ RSpec.describe "Railsmith::BaseService Association DSL" do
 
     it "stores optional flag" do
       stub = stub_service
-      svc = Class.new(Railsmith::BaseService) { link_parent :customer, service: stub, optional: true }
+      svc = Class.new(Railsmith::BaseService) { link_ref :customer, service: stub, optional: true }
       expect(svc.association_registry[:customer].optional).to be true
     end
 
     it "defaults optional to false" do
       stub = stub_service
-      svc = Class.new(Railsmith::BaseService) { link_parent :customer, service: stub }
+      svc = Class.new(Railsmith::BaseService) { link_ref :customer, service: stub }
       expect(svc.association_registry[:customer].optional).to be false
     end
   end
@@ -207,8 +207,8 @@ RSpec.describe "Railsmith::BaseService Association DSL" do
       stub = stub_service
       other = other_service
       Class.new(Railsmith::BaseService) do
-        link_many   :items,   service: stub
-        link_parent :account, service: other
+        link_many :items, service: stub
+        link_ref  :account, service: other
       end
     end
 
@@ -245,7 +245,7 @@ RSpec.describe "Railsmith::BaseService Association DSL" do
       svc = Class.new(Railsmith::BaseService) do
         link_many   :lines,    service: stub
         link_one    :header,   service: stub
-        link_parent :customer, service: stub
+        link_ref :customer, service: stub
       end
 
       names = svc.association_registry.all.map(&:name)

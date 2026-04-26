@@ -85,6 +85,12 @@ module Railsmith
         # When a model is declared, inputs describe the attributes hash; otherwise raw params.
         if attributes_params?
           resolve_attribute_inputs(resolver)
+        elsif self.class.respond_to?(:model) && self.class.model
+          # Model-backed services treat inputs as describing `params[:attributes]`.
+          # For non-mutating actions (list/show/etc.) we often call services with
+          # params that do not include an attributes hash; in that case, skip
+          # input validation entirely so required inputs don't block read actions.
+          Railsmith::Result.success(value: @params)
         else
           resolve_raw_inputs(resolver)
         end

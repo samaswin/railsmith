@@ -42,4 +42,4 @@ Naming/PredicatePrefix:
   AllowedMethods:
     - link_many
     - link_one
-    - link_parent
+    - link_ref
