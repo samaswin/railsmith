@@ -711,6 +711,11 @@ result.failure?          # => true
 result.code              # => "validation_error"
 result.error.details     # => { errors: { email: ["can't be blank"] } }
 
+# Blank strings are treated as missing for required inputs
+result = UserService.call(action: :create, params: { attributes: { email: "   " } })
+result.failure?          # => true
+result.error.details     # => { errors: { email: ["can't be blank"] } }
+
 # Invalid type
 result = UserService.call(action: :create, params: { attributes: { email: "a@b.com", age: "notanumber" } })
 result.error.details     # => { errors: { age: ["is not a valid Integer"] } }

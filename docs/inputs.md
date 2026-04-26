@@ -39,7 +39,7 @@ Each `input` call registers one parameter definition on the service class.
 
 | Option | Type | Description |
 |--------|------|-------------|
-| `required: true` | Boolean | Fail with `validation_error` if the key is absent or `nil` |
+| `required: true` | Boolean | Fail with `validation_error` if the key is absent, `nil`, or a blank string (including whitespace-only) |
 | `default:` | value or `-> { }` | Applied when the key is missing from params. Use a lambda for mutable defaults (`Hash`, `Array`) |
 | `in:` | Array | Allowed values; anything else returns `validation_error` |
 | `transform:` | `Proc` | Zero-arg proc applied after coercion (e.g. `transform: ->(v) { v.strip.downcase }`) |

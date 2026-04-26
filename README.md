@@ -143,6 +143,8 @@ It includes smoke scripts for checkout pipelines and async nested writes against
 
 Declare expected parameters with types, defaults, and constraints using the `input` DSL. Railsmith coerces, validates, and filters params automatically before the action runs.
 
+For required inputs (`required: true`), Railsmith treats blank strings (including whitespace-only) as missing — the same as `nil` or an absent key.
+
 ### Railsmith validation vs Active Record validation
 
 Railsmith **does not replace Active Record validations** (e.g. `validates :email, ...`) and it does not define model validations for you.
