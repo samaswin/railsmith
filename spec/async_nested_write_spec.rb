@@ -122,7 +122,7 @@ RSpec.describe "Railsmith::BaseService async nested writes" do
       :AnwOrderService,
       Class.new(Railsmith::BaseService) do
         model AnwOrder
-        has_many :anw_audits, service: audit_svc, async: async
+        link_many :anw_audits, service: audit_svc, async: async
       end
     )
   end
@@ -131,7 +131,7 @@ RSpec.describe "Railsmith::BaseService async nested writes" do
   # Create path
   # ---------------------------------------------------------------------------
 
-  describe "create with async: true has_many" do
+  describe "create with async: true link_many" do
     before { Railsmith.configuration.async_job_class = RailsmithAsyncNestedWriteSpecFakes::ActiveJobLike }
 
     it "enqueues a job instead of writing nested records inline" do
@@ -297,7 +297,7 @@ RSpec.describe "Railsmith::BaseService async nested writes" do
   # Update path
   # ---------------------------------------------------------------------------
 
-  describe "update with async: true has_many" do
+  describe "update with async: true link_many" do
     before { Railsmith.configuration.async_job_class = RailsmithAsyncNestedWriteSpecFakes::ActiveJobLike }
 
     it "enqueues a job on update, propagating mode: :update" do

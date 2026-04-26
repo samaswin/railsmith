@@ -2,7 +2,7 @@
 
 module Railsmith
   class BaseService
-    # Adds class-level `has_many`, `has_one`, and `belongs_to` DSL macros.
+    # Adds class-level relationship DSL macros.
     #
     # Usage:
     #
@@ -10,9 +10,9 @@ module Railsmith
     #     model Order
     #     domain :commerce
     #
-    #     has_many   :line_items,       service: LineItemService, dependent: :destroy
-    #     has_one    :shipping_address, service: AddressService
-    #     belongs_to :customer,         service: CustomerService, optional: true
+    #     link_many   :line_items,       service: LineItemService, dependent: :destroy
+    #     link_one    :shipping_address, service: AddressService
+    #     link_parent :customer,         service: CustomerService, optional: true
     #   end
     #
     module AssociationDsl
@@ -20,9 +20,9 @@ module Railsmith
         base.extend(ClassMethods)
       end
 
-      # Class-level DSL macros for declaring associations on a service.
+      # Class-level DSL macros for declaring relationships on a service.
       module ClassMethods
-        # Declare a has_many association.
+        # Declare a one-to-many relationship.
         #
         # @param name        [Symbol]  association key (matches nested param key)
         # @param service     [Class]   service class for the associated records
@@ -33,7 +33,7 @@ module Railsmith
         #   background jobs instead of running inline inside the parent's
         #   transaction (default: false). Not compatible with
         #   +dependent: :destroy/:restrict+.
-        def has_many(name, service:, foreign_key: nil, dependent: :ignore, validate: true, async: false)
+        def link_many(name, service:, foreign_key: nil, dependent: :ignore, validate: true, async: false)
           association_registry.register(
             AssociationDefinition.new(
               name, :has_many,
@@ -46,7 +46,7 @@ module Railsmith
           )
         end
 
-        # Declare a has_one association.
+        # Declare a one-to-one relationship (FK on the child).
         #
         # @param name        [Symbol]  association key
         # @param service     [Class]   service class for the associated record
@@ -56,7 +56,7 @@ module Railsmith
         # @param async       [Boolean] when true, the nested write is enqueued as
         #   a background job instead of running inline. Not compatible with
         #   +dependent: :destroy/:restrict+.
-        def has_one(name, service:, foreign_key: nil, dependent: :ignore, validate: true, async: false)
+        def link_one(name, service:, foreign_key: nil, dependent: :ignore, validate: true, async: false)
           association_registry.register(
             AssociationDefinition.new(
               name, :has_one,
@@ -69,13 +69,13 @@ module Railsmith
           )
         end
 
-        # Declare a belongs_to association.
+        # Declare a parent relationship (FK on this record).
         #
         # @param name        [Symbol]  association key
         # @param service     [Class]   service class for the parent record
         # @param foreign_key [Symbol]  explicit FK; inferred as "#{name}_id" when omitted
         # @param optional    [Boolean] skip presence validation (default: false)
-        def belongs_to(name, service:, foreign_key: nil, optional: false)
+        def link_parent(name, service:, foreign_key: nil, optional: false)
           association_registry.register(
             AssociationDefinition.new(
               name, :belongs_to,

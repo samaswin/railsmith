@@ -16,7 +16,7 @@ Railsmith.configure do |config|
   # config.cross_domain_allowlist = [{ from: :billing, to: :catalog }]
   config.on_cross_domain_violation = nil # optional Proc, called on each violation when strict_mode is true
 
-  # Async nested association writes (`async: true` on `has_many`/`has_one`)
+  # Async nested association writes (`async: true` on link_many/link_one)
   #
   # By default Railsmith uses ActiveJob via Railsmith::AsyncNestedWriteJob.
   # This works with SolidQueue/SolidJob, GoodJob, DelayedJob, Sidekiq (via ActiveJob).

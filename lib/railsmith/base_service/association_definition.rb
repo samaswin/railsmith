@@ -4,7 +4,7 @@ module Railsmith
   class BaseService
     # Value object representing a single declared association on a service.
     #
-    # Stores the association name, kind (:has_many, :has_one, :belongs_to),
+    # Stores the association name and kind (internal: :has_many, :has_one, :belongs_to),
     # the associated service class, and options governing cascading behaviour.
     class AssociationDefinition
       # Dependent modes that imply cascading service-layer behavior on parent
@@ -16,7 +16,7 @@ module Railsmith
       attr_reader :name, :kind, :service_class, :foreign_key, :dependent, :optional, :validate, :async
 
       # @param name         [Symbol, String]  association key
-      # @param kind         [Symbol]          :has_many, :has_one, or :belongs_to
+      # @param kind         [Symbol]          internal kind symbol
       # @param service      [Class]           Railsmith::BaseService subclass for the associated records
       # @param options [Hash]            supported keys: :foreign_key, :dependent, :optional, :validate, :async
       def initialize(name, kind, service:, **options)
@@ -44,8 +44,7 @@ module Railsmith
       # Falls back to auto-inference from the parent model class when no
       # explicit foreign_key was given.
       #
-      # has_many / has_one: FK lives on the child → parent_model_id  (e.g. order_id)
-      # belongs_to:         FK lives on this record → association_name_id (e.g. customer_id)
+      # FK placement depends on the internal kind symbol.
       #
       # @param parent_model_class [Class, nil]  the parent model class (used for inference)
       def inferred_foreign_key(parent_model_class = nil)

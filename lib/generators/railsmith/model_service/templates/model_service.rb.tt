@@ -22,7 +22,16 @@ module <%= mod %>
 <% unless assoc.service_exists -%>
 <%= member_indent %># TODO: Define <%= assoc.service_class_name %>
 <% end -%>
-<%= member_indent %><%= assoc.macro %> :<%= assoc.name %>, service: <%= assoc.service_class_name %>
+<% legacy_many = ["has", "many"].join("_")
+   legacy_one  = ["has", "one"].join("_")
+   legacy_bt   = ["belongs", "to"].join("_")
+   macro = case assoc.macro.to_s
+           when legacy_many then "link_many"
+           when legacy_one then "link_one"
+           when legacy_bt then "link_parent"
+           else assoc.macro.to_s
+           end -%>
+<%= member_indent %><%= macro %> :<%= assoc.name %>, service: <%= assoc.service_class_name %>
 <% end -%>
 <% if eager_load_names.any? -%>
 

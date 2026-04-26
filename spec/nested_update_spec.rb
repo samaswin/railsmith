@@ -43,7 +43,7 @@ RSpec.describe "Railsmith::BaseService nested update" do
   def build_order_service(line_svc)
     Class.new(Railsmith::BaseService) do
       model NuOrder
-      has_many :nu_lines, service: line_svc
+      link_many :nu_lines, service: line_svc
     end
   end
 

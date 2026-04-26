@@ -8,7 +8,7 @@ module Railsmith
     # within the caller's open transaction so any failure triggers a full
     # rollback of parent + nested writes.
     #
-    # Nested create flow (has_many / has_one):
+    # Nested create flow (link_many / link_one):
     #   1. Parent record is already persisted
     #   2. For each declared association with nested params in the call's params:
     #      a. Inject parent FK into each item's attributes

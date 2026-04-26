@@ -6,22 +6,22 @@ Railsmith provides first-class association handling on services: eager loading, 
 
 ## Association DSL
 
-Declare associations at the class level using `has_many`, `has_one`, and `belongs_to`:
+Declare service relationships at the class level using `link_many`, `link_one`, and `link_parent`:
 
 ```ruby
 class OrderService < Railsmith::BaseService
   model Order
   domain :commerce
 
-  has_many   :line_items,   service: LineItemService, dependent: :destroy
-  has_many   :audit_events, service: AuditEventService, async: true
-  belongs_to :customer,     service: CustomerService, optional: true
+  link_many   :line_items,   service: LineItemService, dependent: :destroy
+  link_many   :audit_events, service: AuditEventService, async: true
+  link_parent :customer,     service: CustomerService, optional: true
 end
 ```
 
 All three macros accept a `service:` option (required) pointing to the associated service class. Foreign keys are auto-inferred when not given.
 
-### `has_many` / `has_one` options
+### `link_many` / `link_one` options
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -31,7 +31,7 @@ All three macros accept a `service:` option (required) pointing to the associate
 | `validate:` | Boolean | `true` | validate nested records before writing |
 | `async:` | Boolean | `false` | when `true`, nested writes for this association run in a background job after the parent commits ([details](#async-nested-writes)) |
 
-### `belongs_to` options
+### `link_parent` options
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -39,13 +39,13 @@ All three macros accept a `service:` option (required) pointing to the associate
 | `foreign_key:` | Symbol | inferred | FK on this record; defaults to `#{association_name}_id` (e.g. `customer_id`) |
 | `optional:` | Boolean | `false` | skip presence validation for the FK |
 
-`belongs_to` does not support `async:` (the parent row must exist before the FK is written).
+`link_parent` does not support `async:` (the parent row must exist before the FK is written).
 
 ---
 
 ## Why `dependent:` exists
 
-`dependent:` on `has_many` / `has_one` controls what happens to child records when the **parent** is destroyed. Without it, destroying a parent can leave orphaned rows unless the database enforces `ON DELETE CASCADE` (or similar).
+`dependent:` on `link_many` / `link_one` controls what happens to child records when the **parent** is destroyed. Without it, destroying a parent can leave orphaned rows unless the database enforces `ON DELETE CASCADE` (or similar).
 
 Railsmith’s `dependent:` is service-layer compensation: child work runs **through the associated service**, so child callbacks, hooks, events, and audit paths still run, and cascading destroy stays inside the parent’s transaction (failures roll back with the parent).
 
@@ -157,7 +157,7 @@ For synchronous associations, all nested operations run within the parent's tran
 
 ## Async nested writes
 
-Mark a `has_many` or `has_one` association with `async: true` to **enqueue** nested creates/updates as a background job **after** the parent transaction commits, instead of running inline.
+Mark a `link_many` or `link_one` relationship with `async: true` to **enqueue** nested creates/updates as a background job **after** the parent transaction commits, instead of running inline.
 
 ### Configuration
 
@@ -209,7 +209,7 @@ Subscribe via `Railsmith::Instrumentation.subscribe` or `ActiveSupport::Notifica
 
 ## Cascading destroy
 
-When `has_many` or `has_one` is declared with a `dependent:` option, the `destroy` action handles associated records through their service before deleting the parent.
+When `link_many` or `link_one` is declared with a `dependent:` option, the `destroy` action handles associated records through their service before deleting the parent.
 
 | `dependent:` | Behaviour |
 |--------------|-----------|
@@ -221,7 +221,7 @@ When `has_many` or `has_one` is declared with a `dependent:` option, the `destro
 class OrderService < Railsmith::BaseService
   model Order
 
-  has_many :line_items, service: LineItemService, dependent: :destroy
+  link_many :line_items, service: LineItemService, dependent: :destroy
 end
 
 # Destroy: runs LineItemService.call(action: :destroy) for each line item,
@@ -265,7 +265,7 @@ Association registries are deep-duped on inheritance. Subclasses can add or over
 
 ```ruby
 class FullOrderService < OrderService
-  has_many :discounts, service: DiscountService
+  link_many :discounts, service: DiscountService
 end
 ```
 
@@ -283,4 +283,4 @@ rails g railsmith:model_service Order --associations
 rails g railsmith:model_service Order --inputs --associations
 ```
 
-The generator reads `Model.reflect_on_all_associations` and emits `has_many`, `has_one`, and `belongs_to` declarations plus an `includes` line. It adds `# TODO: Define XxxService` comments for associated service classes that don't exist yet.
+The generator reads `Model.reflect_on_all_associations` and emits `link_many`, `link_one`, and `link_parent` declarations plus an `includes` line. It adds `# TODO: Define XxxService` comments for associated service classes that don't exist yet.

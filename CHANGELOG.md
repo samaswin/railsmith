@@ -17,7 +17,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Removed
 
-- **`dependent: :nullify`** cascade mode has been removed from `has_many` and `has_one`. The `:nullify` option set the child's foreign key to `nil` via the associated service's `update` action. This behaviour added implicit coupling between parent and child services and encouraged patterns that are better handled at the database level (`ON DELETE SET NULL`) or explicitly in a custom service action.
+- **`dependent: :nullify`** cascade mode has been removed from `link_many` and `link_one` (and their deprecated aliases). The `:nullify` option set the child's foreign key to `nil` via the associated service's `update` action. This behaviour added implicit coupling between parent and child services and encouraged patterns that are better handled at the database level (`ON DELETE SET NULL`) or explicitly in a custom service action.
 
   **Migration:** if you are using `dependent: :nullify`, replace it with one of the following:
   - Set `ON DELETE SET NULL` on the foreign key constraint in your database migration (recommended).
@@ -187,7 +187,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Added — Async nested association writes
 
-- **`async:` on `has_many` / `has_one`** — optional nested writes enqueued via ActiveJob **after** the parent commits instead of running inside the parent transaction. Not available on `belongs_to` (parent FK must be written synchronously).
+- **`async:` on `link_many` / `link_one`** — optional nested writes enqueued via ActiveJob **after** the parent commits instead of running inside the parent transaction. Not available on `link_parent` (parent FK must be written synchronously).
 - **`AssociationDefinition` / `AssociationDsl`** — `async:` flag and validation: `async: true` cannot be combined with `dependent: :destroy`, `:nullify`, or `:restrict`.
 - **`Configuration#async_job_class`** — assign an `ActiveJob` subclass (for example `Railsmith::AsyncNestedWriteJob`); required whenever an association uses `async: true`, or nested writes raise `Railsmith::AsyncNotConfiguredError`.
 - **`Railsmith::AsyncNestedWriteJob`** — default job implementation that reloads the parent, rebuilds context from `context.to_h`, and runs the nested write for the given association (custom jobs may replace it with a compatible `perform` signature).
@@ -253,6 +253,8 @@ Versioning follows [Semantic Versioning](https://semver.org/).
   5. Apply `transform:` procs
   6. Filter undeclared keys (security: prevents mass-assignment of unexpected fields)
 
+- **Required inputs treat `""` as missing** — if an input is declared with `required: true`, passing an empty string fails the required check the same as a missing or `nil` value.
+
 - **`filter_inputs false`** class-level opt-out — disables undeclared key filtering when needed. Inherited by subclasses.
 
 - **`transform:` option on `input`** — optional zero-arg Proc applied after coercion (e.g. `transform: ->(v) { v.strip.downcase }`).
@@ -315,16 +317,16 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Added — Association Support
 
-- **`has_many` / `has_one` / `belongs_to` DSL** — declare associations directly on a service class:
+- **`link_many` / `link_one` / `link_parent` DSL** — declare service relationships directly on a service class (avoids confusion with ActiveRecord). The old Rails-style macro names are no longer supported in the service DSL.
 
   ```ruby
   class OrderService < Railsmith::BaseService
     model Order
     domain :commerce
 
-    has_many   :line_items,       service: LineItemService, dependent: :destroy
-    has_one    :shipping_address, service: AddressService,  dependent: :nullify
-    belongs_to :customer,         service: CustomerService, optional: true
+    link_many   :line_items,       service: LineItemService, dependent: :destroy
+    link_one    :shipping_address, service: AddressService,  dependent: :nullify
+    link_parent :customer,         service: CustomerService, optional: true
   end
   ```
 
@@ -332,9 +334,9 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 - **`Railsmith::BaseService::AssociationRegistry`** — ordered collection of `AssociationDefinition`s; deep-duped on inheritance so subclasses extend associations without affecting parents.
 
-- **`Railsmith::BaseService::AssociationDsl`** — provides the `has_many`, `has_one`, and `belongs_to` class macros. Foreign keys are auto-inferred when not given:
-  - `has_many` / `has_one`: FK is `"#{parent_model_name.underscore}_id"` on the child (e.g. `order_id`)
-  - `belongs_to`: FK is `"#{association_name}_id"` on this record (e.g. `customer_id`)
+- **`Railsmith::BaseService::AssociationDsl`** — provides the `link_many`, `link_one`, and `link_parent` class macros (plus deprecated aliases). Foreign keys are auto-inferred when not given:
+  - `link_many` / `link_one`: FK is `"#{parent_model_name.underscore}_id"` on the child (e.g. `order_id`)
+  - `link_parent`: FK is `"#{association_name}_id"` on this record (e.g. `customer_id`)
 
 - **`includes` DSL** (`Railsmith::BaseService::EagerLoading`) — declare eager loads at the class level; multiple calls are additive:
 
@@ -424,7 +426,8 @@ Versioning follows [Semantic Versioning](https://semver.org/).
   | `json`, `jsonb`, `hstore` | `Hash` |
   | _(unknown)_ | `String` |
 
-- **`--associations` flag on `railsmith:model_service`** — introspects `Model.reflect_on_all_associations` and emits `has_many`, `has_one`, and `belongs_to` declarations plus an `includes` line covering all associations. Prints a warning and skips when the model can't be loaded. Adds `# TODO: Define XxxService` comments for associated service classes that are not yet defined.
+- **`--associations` flag on `railsmith:model_service`** — introspects `Model.reflect_on_all_associations` and emits relationship declarations plus an `includes` line covering all associations. Prints a warning and skips when the model can't be loaded. Adds `# TODO: Define XxxService` comments for associated service classes that are not yet defined.
+  - Generator output uses `link_many`, `link_one`, and `link_parent`.
 
 - **Updated `model_service.rb.tt` template** — renders optional `# -- Inputs --` and `# -- Associations --` sections when the respective flags are used. Sections are omitted entirely when the flags are absent, preserving the existing output for services generated without them.
 

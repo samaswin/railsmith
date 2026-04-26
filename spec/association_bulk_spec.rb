@@ -45,7 +45,7 @@ RSpec.describe "Railsmith::BaseService bulk operations with associations" do
   def build_order_service(item_svc)
     Class.new(Railsmith::BaseService) do
       model AbOrder
-      has_many :ab_items, service: item_svc
+      link_many :ab_items, service: item_svc
     end
   end
 
@@ -53,7 +53,7 @@ RSpec.describe "Railsmith::BaseService bulk operations with associations" do
   # 1. bulk_create with nested items (all_or_nothing mode)
   # =========================================================================
 
-  describe "bulk_create with nested has_many (all_or_nothing)" do
+  describe "bulk_create with nested link_many (all_or_nothing)" do
     it "creates all parents and their nested items" do
       svc = build_order_service(ab_item_service)
 
@@ -144,7 +144,7 @@ RSpec.describe "Railsmith::BaseService bulk operations with associations" do
   # 2. bulk_create with nested items (best_effort mode)
   # =========================================================================
 
-  describe "bulk_create with nested has_many (best_effort)" do
+  describe "bulk_create with nested link_many (best_effort)" do
     it "creates successful parents and skips failing ones" do
       svc = build_order_service(ab_item_service)
 

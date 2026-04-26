@@ -4,7 +4,7 @@
 
 ### Removed — `dependent: :nullify`
 
-The `:nullify` cascade mode has been removed from `has_many` and `has_one`.
+The `:nullify` cascade mode has been removed from `link_many` and `link_one` (and their deprecated aliases).
 
 **If you are not using `dependent: :nullify` anywhere, no action is required.**
 
@@ -254,19 +254,21 @@ See [docs/call-bang.md](docs/call-bang.md) for detailed usage.
 
 ### Association DSL (additive)
 
-`has_many`, `has_one`, and `belongs_to` are new class-level macros for declaring associations on a service. They are entirely opt-in — services without association declarations behave identically to 1.1.0.
+`link_many`, `link_one`, and `link_parent` are class-level macros for declaring relationships on a service. They are entirely opt-in — services without relationship declarations behave identically to 1.1.0.
+
+> Note: Railsmith previously used Rails-style macro names. Those names are no longer supported in the service DSL; migrate to `link_*`.
 
 ```ruby
 class OrderService < Railsmith::BaseService
   model Order
   domain :commerce
 
-  has_many   :line_items, service: LineItemService, dependent: :destroy
-  belongs_to :customer,  service: CustomerService, optional: true
+  link_many   :line_items, service: LineItemService, dependent: :destroy
+  link_parent :customer,  service: CustomerService, optional: true
 end
 ```
 
-**Options for `has_many` and `has_one`:**
+**Options for `link_many` and `link_one`:**
 
 | Option | Type | Default | Description |
 |---|---|---|---|
@@ -275,7 +277,7 @@ end
 | `dependent:` | Symbol | `:ignore` | cascade behaviour on parent destroy (see Cascading Destroy below) |
 | `validate:` | Boolean | `true` | validate nested records |
 
-**Options for `belongs_to`:**
+**Options for `link_parent`:**
 
 | Option | Type | Default | Description |
 |---|---|---|---|
@@ -377,7 +379,7 @@ OrderService.call(
 
 ### Cascading Destroy (additive)
 
-When `has_many` or `has_one` is declared with a `dependent:` option other than `:ignore`, the `destroy` action handles associated records through their service before deleting the parent.
+When `link_many` or `link_one` is declared with a `dependent:` option other than `:ignore`, the `destroy` action handles associated records through their service before deleting the parent.
 
 | `dependent:` | Behaviour |
 |---|---|
@@ -416,7 +418,7 @@ The two formats are detected automatically by the presence of an `attributes:` k
 2. Run `bundle install`.
 3. Run `bundle exec rspec` — all existing specs should pass with zero changes.
 4. Opt-in to the `input` DSL on services where you want type coercion and validation (Phase 1, already available since the unreleased branch).
-5. Opt-in to `has_many` / `has_one` / `belongs_to` on services that need nested writes or cascading destroy.
+5. Opt-in to `link_many` / `link_one` / `link_parent` on services that need nested writes or cascading destroy.
 6. Opt-in to `includes` on services that need eager loading on `find` and `list`.
 7. Deploy.
 

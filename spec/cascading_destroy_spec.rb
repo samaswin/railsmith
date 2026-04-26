@@ -49,7 +49,7 @@ RSpec.describe "Railsmith::BaseService cascading destroy" do
     item_svc = cd_item_service
     Class.new(Railsmith::BaseService) do
       model CdOrder
-      has_many :cd_items, service: item_svc, dependent: dependent
+      link_many :cd_items, service: item_svc, dependent: dependent
     end
   end
 
@@ -152,8 +152,8 @@ RSpec.describe "Railsmith::BaseService cascading destroy" do
 
       svc = Class.new(Railsmith::BaseService) do
         model CdOrder
-        has_many :cd_items, service: item_svc, dependent: :destroy
-        has_many :cd_notes, service: note_svc, dependent: :ignore
+        link_many :cd_items, service: item_svc, dependent: :destroy
+        link_many :cd_notes, service: note_svc, dependent: :ignore
       end
 
       order = CdOrder.create!(name: "Mixed")
@@ -186,7 +186,7 @@ RSpec.describe "Railsmith::BaseService cascading destroy" do
 
       svc = Class.new(Railsmith::BaseService) do
         model CdOrder
-        has_many :cd_items, service: failing_item_svc, dependent: :destroy
+        link_many :cd_items, service: failing_item_svc, dependent: :destroy
       end
 
       order = CdOrder.create!(name: "Should survive")

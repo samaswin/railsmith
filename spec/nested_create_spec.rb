@@ -51,16 +51,16 @@ RSpec.describe "Railsmith::BaseService nested create" do
   def build_order_service(line_svc, note_svc = nil)
     Class.new(Railsmith::BaseService) do
       model NcOrder
-      has_many :nc_lines, service: line_svc
-      has_one  :nc_note,  service: note_svc if note_svc
+      link_many :nc_lines, service: line_svc
+      link_one  :nc_note,  service: note_svc if note_svc
     end
   end
 
   # =========================================================================
-  # 1. has_many nested create
+  # 1. link_many nested create
   # =========================================================================
 
-  describe "has_many nested create" do
+  describe "link_many nested create" do
     it "creates the parent and all nested items" do
       svc = build_order_service(nc_line_service)
 
@@ -161,10 +161,10 @@ RSpec.describe "Railsmith::BaseService nested create" do
   end
 
   # =========================================================================
-  # 2. has_one nested create
+  # 2. link_one nested create
   # =========================================================================
 
-  describe "has_one nested create" do
+  describe "link_one nested create" do
     it "creates the parent and the single nested record" do
       svc = build_order_service(nc_line_service, nc_note_service)
 
@@ -181,7 +181,7 @@ RSpec.describe "Railsmith::BaseService nested create" do
       expect(NcNote.count).to eq(1)
     end
 
-    it "injects parent FK into the has_one record" do
+    it "injects parent FK into the link_one record" do
       svc = build_order_service(nc_line_service, nc_note_service)
 
       result = svc.call(
@@ -197,7 +197,7 @@ RSpec.describe "Railsmith::BaseService nested create" do
       expect(note.nc_order_id).to eq(result.value.id)
     end
 
-    it "rolls back parent when has_one nested record fails" do
+    it "rolls back parent when link_one nested record fails" do
       failing_note_svc = Class.new(Railsmith::BaseService) do
         model NcNote
         def create

@@ -7,13 +7,13 @@ RSpec.describe "Railsmith::BaseService Association DSL" do
   let(:other_service) { Class.new(Railsmith::BaseService) }
 
   # =========================================================================
-  # 1. has_many registration
+  # 1. link_many registration
   # =========================================================================
 
-  describe "has_many" do
-    it "registers a has_many association in the registry" do
+  describe "link_many" do
+    it "registers a has_many-kind association in the registry" do
       stub = stub_service
-      svc = Class.new(Railsmith::BaseService) { has_many :items, service: stub }
+      svc = Class.new(Railsmith::BaseService) { link_many :items, service: stub }
 
       defn = svc.association_registry[:items]
       expect(defn).not_to be_nil
@@ -23,37 +23,37 @@ RSpec.describe "Railsmith::BaseService Association DSL" do
 
     it "stores dependent option" do
       stub = stub_service
-      svc = Class.new(Railsmith::BaseService) { has_many :items, service: stub, dependent: :destroy }
+      svc = Class.new(Railsmith::BaseService) { link_many :items, service: stub, dependent: :destroy }
       expect(svc.association_registry[:items].dependent).to eq(:destroy)
     end
 
     it "stores validate option" do
       stub = stub_service
-      svc = Class.new(Railsmith::BaseService) { has_many :items, service: stub, validate: false }
+      svc = Class.new(Railsmith::BaseService) { link_many :items, service: stub, validate: false }
       expect(svc.association_registry[:items].validate).to be false
     end
 
     it "stores explicit foreign_key" do
       stub = stub_service
-      svc = Class.new(Railsmith::BaseService) { has_many :items, service: stub, foreign_key: :custom_id }
+      svc = Class.new(Railsmith::BaseService) { link_many :items, service: stub, foreign_key: :custom_id }
       expect(svc.association_registry[:items].foreign_key).to eq(:custom_id)
     end
 
     it "defaults dependent to :ignore" do
       stub = stub_service
-      svc = Class.new(Railsmith::BaseService) { has_many :items, service: stub }
+      svc = Class.new(Railsmith::BaseService) { link_many :items, service: stub }
       expect(svc.association_registry[:items].dependent).to eq(:ignore)
     end
   end
 
   # =========================================================================
-  # 2. has_one registration
+  # 2. link_one registration
   # =========================================================================
 
-  describe "has_one" do
-    it "registers a has_one association" do
+  describe "link_one" do
+    it "registers a has_one-kind association" do
       stub = stub_service
-      svc = Class.new(Railsmith::BaseService) { has_one :profile, service: stub }
+      svc = Class.new(Railsmith::BaseService) { link_one :profile, service: stub }
 
       defn = svc.association_registry[:profile]
       expect(defn).not_to be_nil
@@ -63,7 +63,7 @@ RSpec.describe "Railsmith::BaseService Association DSL" do
     it "stores dependent and validate options" do
       stub = stub_service
       svc = Class.new(Railsmith::BaseService) do
-        has_one :profile, service: stub, dependent: :destroy, validate: false
+        link_one :profile, service: stub, dependent: :destroy, validate: false
       end
 
       defn = svc.association_registry[:profile]
@@ -73,13 +73,13 @@ RSpec.describe "Railsmith::BaseService Association DSL" do
   end
 
   # =========================================================================
-  # 3. belongs_to registration
+  # 3. link_parent registration
   # =========================================================================
 
-  describe "belongs_to" do
-    it "registers a belongs_to association" do
+  describe "link_parent" do
+    it "registers a belongs_to-kind association" do
       stub = stub_service
-      svc = Class.new(Railsmith::BaseService) { belongs_to :customer, service: stub }
+      svc = Class.new(Railsmith::BaseService) { link_parent :customer, service: stub }
 
       defn = svc.association_registry[:customer]
       expect(defn).not_to be_nil
@@ -88,13 +88,13 @@ RSpec.describe "Railsmith::BaseService Association DSL" do
 
     it "stores optional flag" do
       stub = stub_service
-      svc = Class.new(Railsmith::BaseService) { belongs_to :customer, service: stub, optional: true }
+      svc = Class.new(Railsmith::BaseService) { link_parent :customer, service: stub, optional: true }
       expect(svc.association_registry[:customer].optional).to be true
     end
 
     it "defaults optional to false" do
       stub = stub_service
-      svc = Class.new(Railsmith::BaseService) { belongs_to :customer, service: stub }
+      svc = Class.new(Railsmith::BaseService) { link_parent :customer, service: stub }
       expect(svc.association_registry[:customer].optional).to be false
     end
   end
@@ -207,8 +207,8 @@ RSpec.describe "Railsmith::BaseService Association DSL" do
       stub = stub_service
       other = other_service
       Class.new(Railsmith::BaseService) do
-        has_many   :items,   service: stub
-        belongs_to :account, service: other
+        link_many   :items,   service: stub
+        link_parent :account, service: other
       end
     end
 
@@ -220,7 +220,7 @@ RSpec.describe "Railsmith::BaseService Association DSL" do
 
     it "subclass can add associations without affecting parent" do
       stub = stub_service
-      child = Class.new(parent) { has_one :profile, service: stub }
+      child = Class.new(parent) { link_one :profile, service: stub }
 
       expect(child.association_registry[:profile]).not_to be_nil
       expect(parent.association_registry[:profile]).to be_nil
@@ -228,7 +228,7 @@ RSpec.describe "Railsmith::BaseService Association DSL" do
 
     it "subclass can override a parent association" do
       stub = stub_service
-      child = Class.new(parent) { has_many :items, service: stub, dependent: :destroy }
+      child = Class.new(parent) { link_many :items, service: stub, dependent: :destroy }
 
       expect(child.association_registry[:items].dependent).to eq(:destroy)
       expect(parent.association_registry[:items].dependent).to eq(:ignore)
@@ -243,9 +243,9 @@ RSpec.describe "Railsmith::BaseService Association DSL" do
     it "stores all three macro types together" do
       stub = stub_service
       svc = Class.new(Railsmith::BaseService) do
-        has_many   :lines,    service: stub
-        has_one    :header,   service: stub
-        belongs_to :customer, service: stub
+        link_many   :lines,    service: stub
+        link_one    :header,   service: stub
+        link_parent :customer, service: stub
       end
 
       names = svc.association_registry.all.map(&:name)
@@ -260,42 +260,42 @@ RSpec.describe "Railsmith::BaseService Association DSL" do
   describe "async: true" do
     it "defaults async to false" do
       stub = stub_service
-      svc = Class.new(Railsmith::BaseService) { has_many :items, service: stub }
+      svc = Class.new(Railsmith::BaseService) { link_many :items, service: stub }
       expect(svc.association_registry[:items].async).to be false
       expect(svc.association_registry[:items].async?).to be false
     end
 
     it "stores async: true on has_many definitions" do
       stub = stub_service
-      svc = Class.new(Railsmith::BaseService) { has_many :events, service: stub, async: true }
+      svc = Class.new(Railsmith::BaseService) { link_many :events, service: stub, async: true }
       expect(svc.association_registry[:events].async).to be true
       expect(svc.association_registry[:events].async?).to be true
     end
 
     it "stores async: true on has_one definitions" do
       stub = stub_service
-      svc = Class.new(Railsmith::BaseService) { has_one :snapshot, service: stub, async: true }
+      svc = Class.new(Railsmith::BaseService) { link_one :snapshot, service: stub, async: true }
       expect(svc.association_registry[:snapshot].async?).to be true
     end
 
     it "raises when combined with dependent: :destroy" do
       stub = stub_service
       expect do
-        Class.new(Railsmith::BaseService) { has_many :items, service: stub, async: true, dependent: :destroy }
+        Class.new(Railsmith::BaseService) { link_many :items, service: stub, async: true, dependent: :destroy }
       end.to raise_error(ArgumentError, /async: true is not compatible with dependent/)
     end
 
     it "raises when combined with dependent: :restrict" do
       stub = stub_service
       expect do
-        Class.new(Railsmith::BaseService) { has_many :items, service: stub, async: true, dependent: :restrict }
+        Class.new(Railsmith::BaseService) { link_many :items, service: stub, async: true, dependent: :restrict }
       end.to raise_error(ArgumentError, /async: true is not compatible with dependent/)
     end
 
     it "permits async: true with default (:ignore) dependent" do
       stub = stub_service
       expect do
-        Class.new(Railsmith::BaseService) { has_many :items, service: stub, async: true }
+        Class.new(Railsmith::BaseService) { link_many :items, service: stub, async: true }
       end.not_to raise_error
     end
   end

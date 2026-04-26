@@ -276,9 +276,9 @@ RSpec.describe Railsmith::Generators::ModelServiceGenerator do
 
       content = File.read(File.join(temp_dir, "app/services/assoc_order_service.rb"))
       expect(content).to include("# -- Associations --")
-      expect(content).to include("has_many :line_items, service: LineItemService")
-      expect(content).to include("has_one :shipping_address, service: ShippingAddressService")
-      expect(content).to include("belongs_to :customer, service: CustomerService")
+      expect(content).to include("link_many :line_items, service: LineItemService")
+      expect(content).to include("link_one :shipping_address, service: ShippingAddressService")
+      expect(content).to include("link_parent :customer, service: CustomerService")
       expect(content).to include("includes :line_items, :shipping_address, :customer")
     end
   end
@@ -296,7 +296,7 @@ RSpec.describe Railsmith::Generators::ModelServiceGenerator do
 
       content = File.read(File.join(temp_dir, "app/services/todo_model_service.rb"))
       expect(content).to include("# TODO: Define WidgetService")
-      expect(content).to include("has_many :widgets, service: WidgetService")
+      expect(content).to include("link_many :widgets, service: WidgetService")
     end
   end
 
@@ -314,7 +314,7 @@ RSpec.describe Railsmith::Generators::ModelServiceGenerator do
 
       content = File.read(File.join(temp_dir, "app/services/model_with_known_service_service.rb"))
       expect(content).not_to include("# TODO:")
-      expect(content).to include("has_many :widgets, service: WidgetService")
+      expect(content).to include("link_many :widgets, service: WidgetService")
     end
   end
 
@@ -378,7 +378,7 @@ RSpec.describe Railsmith::Generators::ModelServiceGenerator do
       expect(content).to include("# -- Inputs --")
       expect(content).to include("input :name, String")
       expect(content).to include("# -- Associations --")
-      expect(content).to include("has_many :items, service: ItemService")
+      expect(content).to include("link_many :items, service: ItemService")
       expect(content).to include("includes :items")
     end
   end

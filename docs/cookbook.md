@@ -773,8 +773,8 @@ class OrderService < Railsmith::BaseService
   model Order
   domain :commerce
 
-  has_many   :line_items, service: LineItemService, dependent: :destroy
-  belongs_to :customer,  service: CustomerService, optional: true
+  link_many   :line_items, service: LineItemService, dependent: :destroy
+  link_parent :customer,  service: CustomerService, optional: true
 
   includes :line_items, :customer
 end
@@ -858,7 +858,7 @@ end
 class OrderService < Railsmith::BaseService
   model Order
 
-  has_many :line_items, service: LineItemService, dependent: :destroy
+  link_many :line_items, service: LineItemService, dependent: :destroy
 end
 
 # Destroys all line_items via LineItemService,

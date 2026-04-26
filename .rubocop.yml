@@ -38,8 +38,8 @@ Metrics/ClassLength:
 Metrics/ModuleLength:
   Max: 220
 
-# has_many / has_one are intentional Rails-style DSL names, not predicate queries.
 Naming/PredicatePrefix:
   AllowedMethods:
-    - has_many
-    - has_one
+    - link_many
+    - link_one
+    - link_parent

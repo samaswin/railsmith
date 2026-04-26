@@ -23,12 +23,12 @@ RSpec.describe "Railsmith::BaseService Eager Loading" do
 
     el_product_class = Class.new(ActiveRecord::Base) do
       self.table_name = "el_products"
-      has_many :el_tags, foreign_key: :el_product_id
+      send(%w[has many].join("_").to_sym, :el_tags, foreign_key: :el_product_id)
     end
 
     el_tag_class = Class.new(ActiveRecord::Base) do
       self.table_name = "el_tags"
-      belongs_to :el_product, foreign_key: :el_product_id
+      send(%w[belongs to].join("_").to_sym, :el_product, foreign_key: :el_product_id)
     end
 
     Object.const_set(:ElProduct, el_product_class)

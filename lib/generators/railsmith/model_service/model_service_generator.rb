@@ -127,7 +127,7 @@ module Railsmith
     #
     # Association DSL (--associations):
     # - Introspects model associations via reflect_on_all_associations
-    # - Generates has_many, has_one, belongs_to DSL and includes declaration
+    # - Generates relationship DSL and an includes declaration
     class ModelServiceGenerator < Rails::Generators::NamedBase
       source_root File.expand_path("templates", __dir__)
       include ModelServiceGeneratorSupport

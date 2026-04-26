@@ -186,9 +186,9 @@ class OrderService < Railsmith::BaseService
   model Order
   domain :commerce
 
-  has_many   :line_items,   service: LineItemService, dependent: :destroy
-  has_many   :audit_events, service: AuditEventService, async: true
-  belongs_to :customer,     service: CustomerService, optional: true
+  link_many   :line_items,   service: LineItemService, dependent: :destroy
+  link_many   :audit_events, service: AuditEventService, async: true
+  link_parent :customer,     service: CustomerService, optional: true
 
   includes :line_items, :customer
   includes :audit_events, only: %i[find list]
