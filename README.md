@@ -132,7 +132,7 @@ See [docs/quickstart.md](docs/quickstart.md) for a full walkthrough.
 
 For runnable examples that exercise `Railsmith::Pipeline` and services the way a small app would (without shipping a full Rails skeleton in this gem repo), see the companion repository:
 
-- **`railsmith_sample`**: [`github.com/samaswin/railsmith_sample`](https://github.com/samaswin/railsmith_sample)
+- **`railsmith_samples`**: [`github.com/samaswin/railsmith_samples`](https://github.com/samaswin/railsmith_samples)
 
 It includes smoke scripts for checkout pipelines and async nested writes against both in-process and real queue backends (Redis/Postgres/RabbitMQ).
 
